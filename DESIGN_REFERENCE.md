@@ -12,26 +12,26 @@
 
 ```css
 /* Primary Colors */
---primary-main: #[extract from Figma]
---primary-light: #[extract from Figma]
---primary-dark: #[extract from Figma]
+--primary-main: #00C851
+--primary-light: #33D677
+--primary-dark: #00A043
 
 /* Secondary Colors */
---secondary-main: #[extract from Figma]
---secondary-light: #[extract from Figma]
---secondary-dark: #[extract from Figma]
+--secondary-main: #6c757d
+--secondary-light: #adb5bd
+--secondary-dark: #495057
 
 /* Neutral Colors */
---background-default: #[extract from Figma]
---background-paper: #[extract from Figma]
---text-primary: #[extract from Figma]
---text-secondary: #[extract from Figma]
+--background-default: #ffffff
+--background-paper: #ffffff
+--text-primary: #212529
+--text-secondary: #6c757d
 
 /* Status Colors */
---success-main: #[extract from Figma]
---error-main: #[extract from Figma]
---warning-main: #[extract from Figma]
---info-main: #[extract from Figma]
+--success-main: #00C851
+--error-main: #dc3545
+--warning-main: #ffc107
+--info-main: #17a2b8
 ```
 
 ### Typography Scale
@@ -80,36 +80,39 @@
 ### Component Specifications
 
 #### Step Indicator
-- **Layout**: [Horizontal/Vertical from Figma]
-- **Active Step Style**: [Extract visual properties]
-- **Completed Step Style**: [Extract visual properties]
-- **Inactive Step Style**: [Extract visual properties]
-- **Connector Style**: [Extract line/dot properties]
+- **Layout**: Horizontal layout with progress bar
+- **Active Step Style**: Green circle (#00C851) with white number, 40px diameter
+- **Completed Step Style**: Green circle with white checkmark icon
+- **Inactive Step Style**: Light gray circle (#e9ecef) with gray number
+- **Connector Style**: Progress bar background #e9ecef, active green #00C851
 
 #### Form Fields
-- **Input Height**: [extract]px
-- **Border Radius**: [extract]px
-- **Border Width**: [extract]px
-- **Focus State**: [Extract border/shadow properties]
-- **Error State**: [Extract error styling]
-- **Label Style**: [Position, size, color]
-- **Placeholder Style**: [Color, style]
+- **Input Height**: 56px
+- **Border Radius**: 8px
+- **Border Width**: 1px
+- **Focus State**: Green border (#00C851), subtle shadow
+- **Error State**: Red border (#dc3545) with error message
+- **Label Style**: Top positioned, 14px, #212529
+- **Placeholder Style**: #6c757d, regular weight
 
 #### Buttons
 - **Primary Button**:
-  - Background: [color from Figma]
-  - Text Color: [color from Figma]
-  - Border Radius: [value]px
-  - Padding: [vertical]px [horizontal]px
-  - Height: [value]px
-  - Font Weight: [value]
-  - Hover State: [background/shadow changes]
+  - Background: #00C851
+  - Text Color: #ffffff
+  - Border Radius: 8px
+  - Padding: 14px 32px
+  - Height: 48px
+  - Font Weight: 500
+  - Hover State: Darker green #00A043
 
 - **Secondary Button**:
-  - Background: [color from Figma]
-  - Text Color: [color from Figma]
-  - Border: [width]px solid [color]
-  - Other properties: [same as primary]
+  - Background: transparent
+  - Text Color: #6c757d
+  - Border: 1px solid #dee2e6
+  - Border Radius: 8px
+  - Padding: 14px 32px
+  - Height: 48px
+  - Hover State: Light gray background #f8f9fa
 
 #### Cards/Containers
 - **Form Container**:
