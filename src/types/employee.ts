@@ -1,4 +1,5 @@
 // Employee form data interfaces
+import { Timestamp } from 'firebase/firestore';
 export interface PersonalInfo {
   firstName: string;
   lastName: string;
@@ -47,8 +48,8 @@ export interface ValidationResult {
 // Firebase related types
 export interface FirebaseEmployee extends EmployeeFormData {
   id: string;
-  createdAt: any; // Firebase Timestamp
-  updatedAt: any; // Firebase Timestamp
+    createdAt: Timestamp; // Firebase Timestamp
+  updatedAt: Timestamp; // Firebase Timestamp
   status: 'pending' | 'approved' | 'rejected';
 }
 

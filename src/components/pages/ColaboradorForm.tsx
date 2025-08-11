@@ -23,7 +23,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
   const theme = useTheme();
   const stepTitles = ['Infos Básicas', 'Infos Profissionais'];
   const totalSteps = 2;
-  const progressPercentage = currentStep === 1 ? 0 : currentStep === 2 ? 50 : 100;
+    const progressPercentage = Math.round(((currentStep - 1) / (totalSteps - 1)) * 100);
 
   return (
     <Box
