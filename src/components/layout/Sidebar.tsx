@@ -61,11 +61,19 @@ const Sidebar: React.FC<SidebarProps> = ({ width, onNavigateHome }) => {
           }}
         >
           <Box
+            onClick={() => {
+              window.open('https://maxhaider.dev/en/', '_blank', 'noopener,noreferrer');
+            }}
             sx={{
               display: 'flex',
               alignItems: 'center',
               padding: theme.spacing(1),
               borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              },
             }}
           >
             <img

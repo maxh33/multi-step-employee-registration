@@ -23,7 +23,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
   const theme = useTheme();
   const stepTitles = ['Infos Básicas', 'Infos Profissionais'];
   const totalSteps = 2;
-  const progressPercentage = Math.round(((currentStep - 1) / (totalSteps - 1)) * 100);
+  const progressPercentage = currentStep === 1 ? 0 : currentStep === 2 ? 50 : 100;
 
   return (
     <Box
@@ -134,10 +134,10 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
           {/* Left Side - Vertical Steps */}
           <Box
             sx={{
-              backgroundColor: theme.palette.grey[50],
-              borderRight: `1px solid ${theme.palette.grey[200]}`,
               padding: theme.spacing(4, 3),
               minWidth: '280px',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
             <VerticalStepIndicator
@@ -145,6 +145,22 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
               totalSteps={2}
               stepTitles={stepTitles}
             />
+            
+            {/* Voltar Button - Inside Left Sidebar */}
+            <Button
+              variant="text"
+              onClick={onBack}
+              sx={{
+                color: theme.palette.text.secondary,
+                fontWeight: 500,
+                textTransform: 'none',
+                padding: theme.spacing(1.5, 3),
+                marginTop: 'auto',
+                alignSelf: 'flex-start',
+              }}
+            >
+              Voltar
+            </Button>
           </Box>
 
           {/* Right Side - Form Content */}
@@ -221,30 +237,16 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
               )}
             </Box>
 
-            {/* Form Navigation Buttons */}
+            {/* Form Navigation Button - Only Next/Finish */}
             <Box
               sx={{
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 alignItems: 'center',
                 marginTop: 'auto',
                 paddingTop: theme.spacing(4),
-                borderTop: `1px solid ${theme.palette.grey[200]}`,
               }}
             >
-              <Button
-                variant="text"
-                onClick={onBack}
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  padding: theme.spacing(1.5, 3),
-                }}
-              >
-                Voltar
-              </Button>
-
               <Button
                 variant="contained"
                 onClick={() => {
@@ -274,6 +276,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
         </Box>
         </Paper>
       </Box>
+
     </Box>
   );
 };

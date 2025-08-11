@@ -29,58 +29,84 @@ const VerticalStepIndicator: React.FC<VerticalStepIndicatorProps> = ({
         const stepNumber = index + 1;
         const isActive = currentStep === stepNumber;
         const isCompleted = currentStep > stepNumber;
+        const isLastStep = index === stepTitles.length - 1;
 
         return (
           <Box
             key={index}
             sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: theme.spacing(2),
+              position: 'relative',
             }}
           >
-            {/* Step Circle */}
             <Box
               sx={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: 500,
-                backgroundColor: isCompleted || isActive 
-                  ? theme.palette.primary.main 
-                  : theme.palette.grey[200],
-                color: isCompleted || isActive 
-                  ? '#ffffff' 
-                  : theme.palette.grey[600],
-                transition: 'all 0.3s ease',
-                flexShrink: 0,
+                gap: theme.spacing(2),
               }}
             >
-              {isCompleted ? (
-                <CheckIcon sx={{ fontSize: '16px' }} />
-              ) : (
-                stepNumber
-              )}
+              {/* Step Circle */}
+              <Box
+                sx={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  backgroundColor: isCompleted || isActive 
+                    ? theme.palette.primary.main 
+                    : theme.palette.grey[200],
+                  color: isCompleted || isActive 
+                    ? '#ffffff' 
+                    : theme.palette.grey[600],
+                  transition: 'all 0.3s ease',
+                  flexShrink: 0,
+                  position: 'relative',
+                  zIndex: 1,
+                }}
+              >
+                {isCompleted ? (
+                  <CheckIcon sx={{ fontSize: '16px' }} />
+                ) : (
+                  stepNumber
+                )}
+              </Box>
+
+              {/* Step Label */}
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: '14px',
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive 
+                    ? theme.palette.text.primary 
+                    : theme.palette.text.secondary,
+                  lineHeight: 1.4,
+                }}
+              >
+                {title}
+              </Typography>
             </Box>
 
-            {/* Step Label */}
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: '14px',
-                fontWeight: isActive ? 500 : 400,
-                color: isActive 
-                  ? theme.palette.text.primary 
-                  : theme.palette.text.secondary,
-                lineHeight: 1.4,
-              }}
-            >
-              {title}
-            </Typography>
+            {/* Connecting Line */}
+            {!isLastStep && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: '15px', // Center of the circle (32px / 2 - 1px)
+                  top: '32px',
+                  width: '2px',
+                  height: theme.spacing(3), // Same as gap between steps
+                  backgroundColor: currentStep > stepNumber 
+                    ? theme.palette.primary.main 
+                    : theme.palette.grey[300],
+                  transition: 'all 0.3s ease',
+                }}
+              />
+            )}
           </Box>
         );
       })}
