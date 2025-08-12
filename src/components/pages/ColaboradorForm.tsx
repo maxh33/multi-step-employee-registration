@@ -110,13 +110,22 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
             progressIntervalRef.current = null;
           }
           if (onSubmit && formData.personalInfo && formData.professionalInfo) {
-            // Runtime validation to ensure required fields exist before type assertion
-            const isValidForSubmission =
-              formData.personalInfo.firstName?.trim() &&
-              formData.personalInfo.email?.trim() &&
-              formData.professionalInfo.department?.trim();
+            // Explicit type guard function to ensure data integrity
+            const isCompleteEmployeeFormData = (
+              data: Partial<EmployeeFormData>
+            ): data is EmployeeFormData => {
+              return !!(
+                data.personalInfo?.firstName?.trim() &&
+                data.personalInfo?.email?.trim() &&
+                data.personalInfo?.lastName?.trim() &&
+                data.personalInfo?.phone?.trim() &&
+                data.professionalInfo?.department?.trim() &&
+                data.professionalInfo?.position?.trim() &&
+                data.additionalInfo
+              );
+            };
 
-            if (!isValidForSubmission) {
+            if (!isCompleteEmployeeFormData(formData)) {
               setSubmitError(
                 'Dados obrigatórios estão faltando. Verifique os campos obrigatórios.'
               );
@@ -125,7 +134,8 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
               return;
             }
 
-            const result = await onSubmit(formData as EmployeeFormData);
+            // Now we can safely use formData as EmployeeFormData without type assertion
+            const result = await onSubmit(formData);
             if (result.success) {
               // Success - clear form data and navigate
               clearFormData();

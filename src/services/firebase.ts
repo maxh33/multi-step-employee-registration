@@ -50,29 +50,41 @@ const convertDocToEmployee = (doc: QueryDocumentSnapshot<DocumentData>): Employe
   };
 };
 
-// Helper to handle Firebase errors and return a new Error object
-const handleFirebaseError = (error: unknown): Error => {
+// Helper to handle Firebase errors and return a new Error object with context
+const handleFirebaseError = (error: unknown, operation?: string): Error => {
   let message = 'Ocorreu um erro inesperado. Tente novamente.';
+  const operationContext = operation ? ` durante ${operation}` : '';
+
   if (error && typeof error === 'object' && 'code' in error) {
-    const firebaseError = error as { code: string };
+    const firebaseError = error as { code: string; message?: string };
     switch (firebaseError.code) {
       case 'permission-denied':
-        message = 'Permissão negada. Verifique as regras de segurança do Firestore.';
+        message = `Acesso negado${operationContext}. Verifique suas permissões ou contate o administrador.`;
         break;
       case 'unavailable':
-        message = 'O serviço está temporariamente indisponível. Tente novamente mais tarde.';
+        message = `Serviço indisponível${operationContext}. Verifique sua conexão e tente novamente.`;
         break;
       case 'not-found':
-        message = 'O documento solicitado não foi encontrado.';
+        message = `Registro não encontrado${operationContext}. O colaborador pode ter sido removido.`;
         break;
       case 'deadline-exceeded':
-        message = 'O tempo para a operação foi excedido. Verifique sua conexão com a internet.';
+        message = `Tempo limite excedido${operationContext}. Verifique sua conexão com a internet.`;
+        break;
+      case 'already-exists':
+        message = `Colaborador já existe${operationContext}. Verifique o e-mail informado.`;
+        break;
+      case 'invalid-argument':
+        message = `Dados inválidos${operationContext}. Verifique os campos obrigatórios.`;
+        break;
+      case 'resource-exhausted':
+        message = `Limite de uso excedido${operationContext}. Tente novamente mais tarde.`;
         break;
       default:
-        message = `Um erro ocorreu: ${firebaseError.code}. Por favor, contate o suporte.`;
+        message = `Erro ${firebaseError.code}${operationContext}. Contate o suporte se o problema persistir.`;
     }
   }
-  console.error('Firebase Error:', error);
+
+  console.error(`Firebase Error${operationContext}:`, error);
   return new Error(message);
 };
 
@@ -91,7 +103,7 @@ export const createEmployee = async (data: EmployeeFormData): Promise<string> =>
     const docRef = await addDoc(employeesCollectionRef, newEmployeeData);
     return docRef.id;
   } catch (error) {
-    throw handleFirebaseError(error);
+    throw handleFirebaseError(error, 'criação de colaborador');
   }
 };
 
@@ -116,7 +128,7 @@ export const updateEmployee = async (
 
     await updateDoc(employeeDocRef, updateData);
   } catch (error) {
-    throw handleFirebaseError(error);
+    throw handleFirebaseError(error, 'atualização de colaborador');
   }
 };
 
@@ -131,7 +143,7 @@ export const getEmployee = async (id: string): Promise<Employee | null> => {
       return null;
     }
   } catch (error) {
-    throw handleFirebaseError(error);
+    throw handleFirebaseError(error, 'consulta de colaborador');
   }
 };
 
@@ -141,7 +153,7 @@ export const getAllEmployees = async (): Promise<Employee[]> => {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(convertDocToEmployee);
   } catch (error) {
-    throw handleFirebaseError(error);
+    throw handleFirebaseError(error, 'listagem de colaboradores');
   }
 };
 
@@ -150,6 +162,6 @@ export const deleteEmployee = async (id: string): Promise<void> => {
     const employeeDocRef = doc(db, 'employees', id);
     await deleteDoc(employeeDocRef);
   } catch (error) {
-    throw handleFirebaseError(error);
+    throw handleFirebaseError(error, 'exclusão de colaborador');
   }
 };

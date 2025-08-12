@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import validator from 'validator';
 import { EmployeeFormData, FormState, ValidationResult } from '../types/employee';
 
 const STORAGE_KEY = 'employee-form-data';
@@ -35,11 +36,7 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
     }
     if (!formData.personalInfo?.email?.trim()) {
       errors['personalInfo.email'] = 'E-mail é obrigatório';
-    } else if (
-      !/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)+$/.test(
-        formData.personalInfo.email
-      )
-    ) {
+    } else if (!validator.isEmail(formData.personalInfo.email)) {
       errors['personalInfo.email'] = 'E-mail deve ter um formato válido';
     }
   }
