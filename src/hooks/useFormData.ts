@@ -4,33 +4,24 @@ import { EmployeeFormData, FormState, ValidationResult } from '../types/employee
 
 const STORAGE_KEY = 'employee-form-data';
 
-// Initial form data
+// Initial form data - Only implemented fields
 const initialFormData: Partial<EmployeeFormData> = {
   personalInfo: {
     firstName: '',
-    lastName: '',
     email: '',
-    phone: '',
     activateOnCreate: false,
   },
   professionalInfo: {
-    position: '',
     department: '',
-    startDate: '',
-    salary: 0,
-  },
-  additionalInfo: {
-    emergencyContact: '',
-    notes: '',
   },
 };
 
-// Basic validation rules
+// Basic validation rules - All 4 fields are required
 const validateStep = (step: number, formData: Partial<EmployeeFormData>): ValidationResult => {
   const errors: Record<string, string> = {};
 
   if (step === 1) {
-    // Step 1: Personal Info validation
+    // Step 1: Personal Info validation (3 required fields)
     if (!formData.personalInfo?.firstName?.trim()) {
       errors['personalInfo.firstName'] = 'Nome é obrigatório';
     }
@@ -39,10 +30,13 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
     } else if (!validator.isEmail(formData.personalInfo.email)) {
       errors['personalInfo.email'] = 'E-mail deve ter um formato válido';
     }
+    if (formData.personalInfo?.activateOnCreate === undefined) {
+      errors['personalInfo.activateOnCreate'] = 'Definir status de ativação é obrigatório';
+    }
   }
 
   if (step === 2) {
-    // Step 2: Professional Info validation
+    // Step 2: Professional Info validation (1 required field)
     if (!formData.professionalInfo?.department?.trim()) {
       errors['professionalInfo.department'] = 'Departamento é obrigatório';
     }
@@ -54,12 +48,13 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
   };
 };
 
-// Calculate progress based on filled fields
+// Calculate progress based on filled fields - 4 required fields total
 const calculateProgress = (formData: Partial<EmployeeFormData>): number => {
   const fields = [
-    formData.personalInfo?.firstName,
-    formData.personalInfo?.email,
-    formData.professionalInfo?.department,
+    formData.personalInfo?.firstName, // Required
+    formData.personalInfo?.email, // Required
+    formData.personalInfo?.activateOnCreate !== undefined ? 'set' : '', // Required (boolean)
+    formData.professionalInfo?.department, // Required
   ];
 
   const filledFields = fields.filter((field) =>
@@ -154,7 +149,7 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
     []
   );
 
-  // Update professional info
+  // Update professional info - department only
   const updateProfessionalInfo = useCallback(
     (professionalInfo: Partial<EmployeeFormData['professionalInfo']>) => {
       setFormState((prev) => ({

@@ -45,20 +45,11 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
     return {
       personalInfo: {
         firstName: editingEmployee.firstName,
-        lastName: editingEmployee.lastName,
         email: editingEmployee.email,
-        phone: editingEmployee.phone,
         activateOnCreate: editingEmployee.status === 'Ativo',
       },
       professionalInfo: {
-        position: editingEmployee.position,
         department: editingEmployee.department,
-        startDate: '',
-        salary: 0,
-      },
-      additionalInfo: {
-        emergencyContact: '',
-        notes: '',
       },
     };
   }, [editingEmployee]);
@@ -110,18 +101,15 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
             progressIntervalRef.current = null;
           }
           if (onSubmit && formData.personalInfo && formData.professionalInfo) {
-            // Explicit type guard function to ensure data integrity
+            // Explicit type guard function to ensure data integrity - 4 required fields
             const isCompleteEmployeeFormData = (
               data: Partial<EmployeeFormData>
             ): data is EmployeeFormData => {
               return !!(
                 data.personalInfo?.firstName?.trim() &&
                 data.personalInfo?.email?.trim() &&
-                data.personalInfo?.lastName?.trim() &&
-                data.personalInfo?.phone?.trim() &&
-                data.professionalInfo?.department?.trim() &&
-                data.professionalInfo?.position?.trim() &&
-                data.additionalInfo
+                data.personalInfo?.activateOnCreate !== undefined &&
+                data.professionalInfo?.department?.trim()
               );
             };
 

@@ -1,46 +1,125 @@
-# Getting Started with Create React App
+# Multi-Step Employee Registration
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, responsive employee registration application built with React, TypeScript, Material-UI, and Firebase. Features a streamlined 4-field MVP with comprehensive validation, real-time feedback, and automated testing infrastructure.
 
-## Available Scripts
+## 🚀 Features
 
-In the project directory, you can run:
+- **Multi-step form** with intuitive navigation and progress tracking
+- **Real-time validation** with contextual error messages
+- **Firebase integration** for secure data persistence
+- **Responsive design** following Material-UI design system
+- **TypeScript** for enhanced type safety and developer experience
+- **Comprehensive testing** with Playwright E2E test suite
+- **CI/CD pipeline** with automated testing on pull requests
 
-### `npm start`
+## 🛠 Technology Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **Frontend**: React 19, TypeScript, Material-UI
+- **Backend**: Firebase (Firestore)
+- **Testing**: Playwright for E2E testing
+- **Deployment**: Vercel
+- **CI/CD**: GitHub Actions
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## 📋 Form Fields
 
-### `npm test`
+The application implements a focused 4-field MVP:
+1. **Personal Info**: First Name, Email
+2. **Settings**: Activate on Create toggle
+3. **Professional Info**: Department selection
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 🏃‍♂️ Quick Start
 
-### `npm run build`
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Firebase project (see setup below)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Installation
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Configure Firebase:
+   ```bash
+   cp .env.example .env
+   # Add your Firebase config values to .env
+   ```
 
-### `npm run eject`
+4. Start development server:
+   ```bash
+   npm start
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## 🔧 Available Scripts
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Development
+- `npm start` - Start development server
+- `npm run build` - Build for production
+- `npm run serve` - Serve production build locally
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Code Quality
+- `npm run lint` - Run ESLint
+- `npm run lint:fix` - Fix ESLint issues
+- `npm run type-check` - Run TypeScript checks
+- `npm run format` - Format code with Prettier
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Testing
+- `npm test` - Run unit tests
+- `npm run test:e2e` - Run Playwright E2E tests
+- `npm run test:e2e:ui` - Run E2E tests with UI
 
-## Learn More
+## 🔥 Firebase Setup
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable Firestore Database
+3. Copy configuration values to `.env`:
+   ```
+   REACT_APP_FIREBASE_API_KEY=your_api_key
+   REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+   REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   REACT_APP_FIREBASE_APP_ID=your_app_id
+   ```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🧪 Testing
+
+The project includes comprehensive testing infrastructure:
+
+- **Unit Tests**: Component and utility function testing
+- **E2E Tests**: Full application workflow testing with Playwright
+- **CI/CD**: Automated testing on all pull requests
+
+Run E2E tests locally:
+```bash
+npm run test:e2e
+```
+
+## 🚀 Deployment
+
+The application is configured for Vercel deployment:
+
+1. Connect your GitHub repository to Vercel
+2. Configure environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+## 📚 Documentation
+
+- **[CLAUDE.md](./CLAUDE.md)** - Development guidelines and project overview
+- **[PROJECT_GUIDELINES.md](./PROJECT_GUIDELINES.md)** - Comprehensive development guidelines
+- **[DEVELOPMENT_CHECKLIST.md](./DEVELOPMENT_CHECKLIST.md)** - Step-by-step implementation guide
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and ensure they pass
+5. Submit a pull request
+
+## 📄 License
+
+This project is part of a technical challenge and is for educational purposes.

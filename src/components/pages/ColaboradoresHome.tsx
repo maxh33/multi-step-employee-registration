@@ -55,10 +55,10 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
       let aValue = a[sortField];
       let bValue = b[sortField];
 
-      // Handle name sorting (combine firstName + lastName)
+      // Handle name sorting (firstName only since lastName not implemented)
       if (sortField === 'firstName') {
-        aValue = `${a.firstName} ${a.lastName}`;
-        bValue = `${b.firstName} ${b.lastName}`;
+        aValue = a.firstName;
+        bValue = b.firstName;
       }
 
       // Convert to strings for comparison
@@ -462,7 +462,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                   {/* 6-dot drag handle - appears on hover */}
 
                   <Avatar
-                    alt={`${employee.firstName} ${employee.lastName}`}
+                    alt={employee.firstName}
                     sx={{
                       width: 32,
                       height: 32,
@@ -473,7 +473,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                     }}
                   >
                     {employee.firstName.charAt(0).toUpperCase()}
-                    {employee.lastName.charAt(0).toUpperCase()}
                   </Avatar>
                   <Typography
                     variant="body2"
@@ -483,7 +482,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                       color: theme.palette.text.primary,
                     }}
                   >
-                    {employee.firstName} {employee.lastName}
+                    {employee.firstName}
                   </Typography>
                 </Box>
 
