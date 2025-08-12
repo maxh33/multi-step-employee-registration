@@ -9,6 +9,7 @@ import {
   useTheme,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { SelectChangeEvent } from '@mui/material';
 import { ProfessionalInfo } from '../../types/employee';
 
 interface ProfessionalInfoStepProps {
@@ -35,7 +36,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
   const theme = useTheme();
 
   const handleFieldChange =
-    (field: keyof ProfessionalInfo) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    (field: keyof ProfessionalInfo) => (event: SelectChangeEvent<string>) => {
       const value = event.target.value;
       onChange({
         ...data,
@@ -53,7 +54,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
         display: 'flex',
         flexDirection: 'column',
         gap: theme.spacing(3),
-        maxWidth: '500px',
+        width: '100%',
       }}
     >
       {/* Department Dropdown */}

@@ -39,6 +39,8 @@ const Header: React.FC<HeaderProps> = ({ showBreadcrumbs: _showBreadcrumbs = fal
           >
             {/* User Profile */}
             <Avatar
+              src="/max1.webp"
+              alt="Max Haider"
               sx={{
                 width: 32,
                 height: 32,

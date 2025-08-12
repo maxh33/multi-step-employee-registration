@@ -1,20 +1,217 @@
-import React from 'react';
-import { Box, Typography, Button, Paper, useTheme, Avatar, Chip } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
+import React, { useState, useMemo } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  useTheme,
+  Avatar,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  Checkbox,
+} from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import { Employee } from '../../types/employee';
 
 interface ColaboradoresHomeProps {
   onCreateNew: () => void;
   employees: Employee[];
   onEditEmployee: (employee: Employee) => void;
+  onDeleteEmployees: (employeeIds: string[]) => void;
+  onReorderEmployees: (fromIndex: number, toIndex: number) => void;
 }
 
 const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   onCreateNew,
   employees,
   onEditEmployee,
+  onDeleteEmployees,
+  onReorderEmployees,
 }) => {
   const theme = useTheme();
+
+  // Sorting state
+  const [sortField, setSortField] = useState<keyof Employee | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Delete mode state
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+
+  // Actions menu state (3-dot menu for edit/delete)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [actionsMenuEmployeeId, setActionsMenuEmployeeId] = useState<string | null>(null);
+
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedEmployeeId, setDraggedEmployeeId] = useState<string | null>(null);
+  const [dragOverEmployeeId, setDragOverEmployeeId] = useState<string | null>(null);
+
+  // Sort employees based on current sort settings
+  const sortedEmployees = useMemo(() => {
+    if (!sortField) return employees;
+
+    return [...employees].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      // Handle name sorting (combine firstName + lastName)
+      if (sortField === 'firstName') {
+        aValue = `${a.firstName} ${a.lastName}`;
+        bValue = `${b.firstName} ${b.lastName}`;
+      }
+
+      // Convert to strings for comparison
+      const aStr = String(aValue).toLowerCase();
+      const bStr = String(bValue).toLowerCase();
+
+      if (sortDirection === 'asc') {
+        return aStr.localeCompare(bStr);
+      } else {
+        return bStr.localeCompare(aStr);
+      }
+    });
+  }, [employees, sortField, sortDirection]);
+
+  // Handle column header click for sorting
+  const handleSort = (field: keyof Employee) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, start with ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Get sort indicator for column headers
+  const getSortIndicator = (field: keyof Employee) => {
+    if (sortField !== field) return '↕'; // No sort
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
+
+  // Handle actions menu (edit/delete)
+  const handleActionsMenuClick = (event: React.MouseEvent<HTMLElement>, employeeId: string) => {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + 8,
+      left: rect.left,
+    });
+    setActionsMenuEmployeeId(employeeId);
+  };
+
+  const handleActionsMenuClose = () => {
+    setMenuPosition(null);
+    setActionsMenuEmployeeId(null);
+  };
+
+  const handleEdit = () => {
+    if (actionsMenuEmployeeId) {
+      const employee = employees.find((emp) => emp.id === actionsMenuEmployeeId);
+      if (employee) {
+        onEditEmployee(employee);
+      }
+    }
+    handleActionsMenuClose();
+  };
+
+  const handleDelete = () => {
+    setIsDeleteMode(true);
+    if (actionsMenuEmployeeId) {
+      setSelectedEmployees(new Set([actionsMenuEmployeeId]));
+    }
+    handleActionsMenuClose();
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteMode(false);
+    setSelectedEmployees(new Set());
+  };
+
+  const handleConfirmDelete = () => {
+    if (selectedEmployees.size > 0) {
+      onDeleteEmployees(Array.from(selectedEmployees));
+      setSelectedEmployees(new Set());
+      setIsDeleteMode(false);
+    }
+  };
+
+  const handleCheckboxChange = (employeeId: string, checked: boolean) => {
+    const newSelected = new Set(selectedEmployees);
+    if (checked) {
+      newSelected.add(employeeId);
+    } else {
+      newSelected.delete(employeeId);
+    }
+    setSelectedEmployees(newSelected);
+  };
+
+  const handleRowClick = (employee: Employee) => {
+    if (!isDeleteMode && !isDragging) {
+      onEditEmployee(employee);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, employeeId: string) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    setDraggedEmployeeId(employeeId);
+
+    // Set drag effect and data
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', employeeId);
+
+    // Close any open actions menu
+    setMenuPosition(null);
+    setActionsMenuEmployeeId(null);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedEmployeeId(null);
+    setDragOverEmployeeId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, employeeId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedEmployeeId !== employeeId) {
+      setDragOverEmployeeId(employeeId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverEmployeeId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetEmployeeId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedEmployeeId && draggedEmployeeId !== targetEmployeeId) {
+      const fromIndex = employees.findIndex((emp) => emp.id === draggedEmployeeId);
+      const toIndex = employees.findIndex((emp) => emp.id === targetEmployeeId);
+
+      if (fromIndex !== -1 && toIndex !== -1) {
+        onReorderEmployees(fromIndex, toIndex);
+      }
+    }
+
+    handleDragEnd();
+  };
 
   return (
     <Box
@@ -47,7 +244,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
 
         <Button
           variant="contained"
-          startIcon={<AddIcon />}
           onClick={onCreateNew}
           sx={{
             backgroundColor: theme.palette.primary.main,
@@ -65,70 +261,164 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         </Button>
       </Box>
 
-      {/* Table Header */}
+      {/* Sticky Table Header */}
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          backgroundColor: theme.palette.background.default,
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: '12px 12px 0 0',
+            border: `1px solid ${theme.palette.grey[200]}`,
+            borderBottom: 'none',
+          }}
+        >
+          {/* Table Headers */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: isDeleteMode ? '40px 1fr 1fr 1fr 80px 80px' : '1fr 1fr 1fr 80px',
+              gap: theme.spacing(2),
+              padding: theme.spacing(2, 3),
+              backgroundColor: '#f4f6f8',
+              borderBottom: `1px solid ${theme.palette.grey[200]}`,
+              transition: 'grid-template-columns 0.3s ease',
+            }}
+          >
+            {/* Checkbox column header - only in delete mode */}
+            {isDeleteMode && (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                {/* Empty space for checkbox column */}
+              </Box>
+            )}
+
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('firstName')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Nome {getSortIndicator('firstName')}
+            </Typography>
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('email')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Email {getSortIndicator('email')}
+            </Typography>
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('department')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Departamento {getSortIndicator('department')}
+            </Typography>
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('status')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Status {getSortIndicator('status')}
+            </Typography>
+
+            {/* Actions column header - only in delete mode */}
+            {isDeleteMode && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: theme.spacing(0.5),
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={handleConfirmDelete}
+                  disabled={selectedEmployees.size === 0}
+                  sx={{
+                    color: '#C62828',
+                    '&:hover': {
+                      backgroundColor: 'rgba(198, 40, 40, 0.1)',
+                    },
+                    '&:disabled': {
+                      color: theme.palette.grey[400],
+                    },
+                  }}
+                >
+                  <CheckIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={handleCancelDelete}
+                  sx={{
+                    color: '#2E7D32',
+                    '&:hover': {
+                      backgroundColor: 'rgba(46, 125, 50, 0.1)',
+                    },
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+          </Box>
+        </Paper>
+      </Box>
+
+      {/* Scrollable Table Body */}
       <Paper
         elevation={0}
         sx={{
-          borderRadius: '12px',
+          borderRadius: '0 0 12px 12px',
           border: `1px solid ${theme.palette.grey[200]}`,
-          overflow: 'hidden',
+          borderTop: 'none',
+          maxHeight: '70vh',
+          overflow: 'auto',
         }}
       >
-        {/* Table Headers */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr 100px',
-            gap: theme.spacing(2),
-            padding: theme.spacing(2, 3),
-            backgroundColor: theme.palette.grey[50],
-            borderBottom: `1px solid ${theme.palette.grey[200]}`,
-          }}
-        >
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 500,
-              color: theme.palette.text.secondary,
-              fontSize: '14px',
-            }}
-          >
-            Nome ↑
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 500,
-              color: theme.palette.text.secondary,
-              fontSize: '14px',
-            }}
-          >
-            Email ↓
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 500,
-              color: theme.palette.text.secondary,
-              fontSize: '14px',
-            }}
-          >
-            Departamento ↓
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 500,
-              color: theme.palette.text.secondary,
-              fontSize: '14px',
-            }}
-          >
-            Status ↓
-          </Typography>
-        </Box>
-
         {/* Employee List or Empty State */}
-        {employees.length === 0 ? (
+        {sortedEmployees.length === 0 ? (
           <Box
             sx={{
               padding: theme.spacing(8, 3),
@@ -157,7 +447,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
             </Typography>
             <Button
               variant="outlined"
-              startIcon={<AddIcon />}
               onClick={onCreateNew}
               sx={{
                 borderColor: theme.palette.primary.main,
@@ -177,92 +466,205 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
           </Box>
         ) : (
           // Employee Rows
-          employees.map((employee, index) => (
-            <Box
-              key={employee.id}
-              onClick={() => onEditEmployee(employee)}
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr 100px',
-                gap: theme.spacing(2),
-                padding: theme.spacing(2, 3),
-                alignItems: 'center',
-                borderBottom:
-                  index < employees.length - 1 ? `1px solid ${theme.palette.grey[200]}` : 'none',
-                cursor: 'pointer',
-                '&:hover': {
-                  backgroundColor: theme.palette.grey[50],
-                },
-              }}
-            >
-              {/* Nome Column */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: theme.spacing(2) }}>
-                <Avatar
+          <>
+            {sortedEmployees.map((employee, index) => (
+              <Box
+                key={employee.id}
+                onMouseEnter={() => setHoveredRowId(employee.id)}
+                onMouseLeave={() => setHoveredRowId(null)}
+                onClick={() => handleRowClick(employee)}
+                onDragOver={(e) => handleDragOver(e, employee.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, employee.id)}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: isDeleteMode
+                    ? '40px 1fr 1fr 1fr 80px 80px'
+                    : '1fr 1fr 1fr 80px',
+                  gap: theme.spacing(2),
+                  padding: theme.spacing(2, 3),
+                  alignItems: 'center',
+                  position: 'relative',
+                  borderBottom:
+                    index < sortedEmployees.length - 1
+                      ? `1px solid ${theme.palette.grey[200]}`
+                      : 'none',
+                  cursor: isDeleteMode ? 'default' : 'pointer',
+                  transition: 'grid-template-columns 0.3s ease, background-color 0.2s ease',
+                  backgroundColor:
+                    dragOverEmployeeId === employee.id
+                      ? theme.palette.primary.main + '20'
+                      : draggedEmployeeId === employee.id && isDragging
+                        ? theme.palette.grey[100]
+                        : 'transparent',
+                  opacity: draggedEmployeeId === employee.id && isDragging ? 0.7 : 1,
+                  '&:hover': {
+                    backgroundColor:
+                      dragOverEmployeeId === employee.id
+                        ? theme.palette.primary.main + '20'
+                        : theme.palette.grey[50],
+                  },
+                }}
+              >
+                {/* Checkbox Column - only in delete mode */}
+                {isDeleteMode && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Checkbox
+                      size="small"
+                      checked={selectedEmployees.has(employee.id)}
+                      onChange={(e) => handleCheckboxChange(employee.id, e.target.checked)}
+                      sx={{
+                        '& .MuiSvgIcon-root': { fontSize: 20 },
+                      }}
+                    />
+                  </Box>
+                )}
+
+                {/* Nome Column */}
+                <Box
                   sx={{
-                    width: 32,
-                    height: 32,
-                    backgroundColor: employee.avatar,
-                    fontSize: '14px',
-                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing(2),
+                    position: 'relative',
                   }}
                 >
-                  {employee.firstName.charAt(0)}
-                  {employee.lastName.charAt(0)}
-                </Avatar>
+                  {/* 6-dot drag handle - appears on hover */}
+                  {!isDeleteMode && hoveredRowId === employee.id && (
+                    <IconButton
+                      size="small"
+                      draggable={true}
+                      onDragStart={(e) => handleDragStart(e, employee.id)}
+                      onDragEnd={handleDragEnd}
+                      sx={{
+                        position: 'absolute',
+                        left: -24,
+                        visibility: hoveredRowId === employee.id ? 'visible' : 'hidden',
+                        transition: 'visibility 0.2s ease',
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        cursor: isDragging ? 'grabbing' : 'grab',
+                        '&:hover': {
+                          backgroundColor: theme.palette.grey[100],
+                        },
+                      }}
+                    >
+                      <DragIndicatorIcon fontSize="small" />
+                    </IconButton>
+                  )}
+
+                  <Avatar
+                    src={`https://i.pravatar.cc/32?u=${employee.email}`}
+                    alt={`${employee.firstName} ${employee.lastName}`}
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      backgroundColor: employee.avatar,
+                      fontSize: '14px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {employee.firstName.charAt(0)}
+                    {employee.lastName.charAt(0)}
+                  </Avatar>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: theme.palette.text.primary,
+                    }}
+                  >
+                    {employee.firstName} {employee.lastName}
+                  </Typography>
+                </Box>
+
+                {/* Email Column */}
                 <Typography
                   variant="body2"
                   sx={{
                     fontSize: '14px',
-                    fontWeight: 500,
-                    color: theme.palette.text.primary,
+                    color: theme.palette.text.secondary,
                   }}
                 >
-                  {employee.firstName} {employee.lastName}
+                  {employee.email}
                 </Typography>
+
+                {/* Departamento Column */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '14px',
+                    color: theme.palette.text.secondary,
+                  }}
+                >
+                  {employee.department}
+                </Typography>
+
+                {/* Status Column */}
+                <Chip
+                  label={employee.status}
+                  size="small"
+                  sx={{
+                    backgroundColor: employee.status === 'Ativo' ? '#E8F5E8' : '#FDE8E8',
+                    color: employee.status === 'Ativo' ? '#2E7D32' : '#C62828',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    height: '24px',
+                    minWidth: 'fit-content',
+                    width: 'fit-content',
+                    borderRadius: '5px',
+                  }}
+                />
+
+                {/* Empty actions column - only in delete mode to match header grid */}
+                {isDeleteMode && <Box></Box>}
+
+                {/* 3-dot actions menu - positioned relative to entire row */}
+                <IconButton
+                  size="small"
+                  onClick={(e) => handleActionsMenuClick(e, employee.id)}
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    display: !isDeleteMode && hoveredRowId === employee.id ? 'block' : 'none',
+                    transition: 'opacity 0.2s ease',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: theme.palette.grey[100],
+                    },
+                  }}
+                >
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
               </Box>
+            ))}
 
-              {/* Email Column */}
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: '14px',
-                  color: theme.palette.text.secondary,
-                }}
-              >
-                {employee.email}
-              </Typography>
-
-              {/* Departamento Column */}
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: '14px',
-                  color: theme.palette.text.secondary,
-                }}
-              >
-                {employee.department}
-              </Typography>
-
-              {/* Status Column */}
-              <Chip
-                label={employee.status}
-                size="small"
-                sx={{
-                  backgroundColor: employee.status === 'Ativo' ? '#E8F5E8' : '#FDE8E8',
-                  color: employee.status === 'Ativo' ? '#2E7D32' : '#C62828',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  height: '24px',
-                  borderRadius: '4px', //square/rectangular
-                  border: employee.status === 'Ativo' ? '1px solid #A5D6A7' : '1px solid #FFAB91',
-                  '& .MuiChip-label': {
-                    paddingX: theme.spacing(1),
-                    paddingY: theme.spacing(0.25),
-                  },
-                }}
-              />
-            </Box>
-          ))
+            {/* Actions menu */}
+            <Menu
+              open={Boolean(menuPosition)}
+              onClose={handleActionsMenuClose}
+              anchorReference="anchorPosition"
+              anchorPosition={menuPosition || undefined}
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '8px',
+                  boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
+                },
+              }}
+            >
+              <MenuItem onClick={handleEdit} sx={{ fontSize: '14px', gap: theme.spacing(1) }}>
+                <EditIcon fontSize="small" />
+                Editar
+              </MenuItem>
+              <MenuItem onClick={handleDelete} sx={{ fontSize: '14px', gap: theme.spacing(1) }}>
+                <DeleteIcon fontSize="small" />
+                Remover
+              </MenuItem>
+            </Menu>
+          </>
         )}
       </Paper>
     </Box>

@@ -16,9 +16,18 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 interface SidebarProps {
   width: number;
   onNavigateHome?: () => void;
+  variant?: 'permanent' | 'temporary';
+  open?: boolean;
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ width, onNavigateHome }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  width,
+  onNavigateHome,
+  variant = 'permanent',
+  open = true,
+  onClose,
+}) => {
   const theme = useTheme();
 
   const menuItems = [
@@ -32,7 +41,9 @@ const Sidebar: React.FC<SidebarProps> = ({ width, onNavigateHome }) => {
 
   return (
     <Drawer
-      variant="permanent"
+      variant={variant}
+      open={open}
+      onClose={onClose}
       sx={{
         width: width,
         flexShrink: 0,

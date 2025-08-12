@@ -30,7 +30,7 @@ const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({ data, errors, onCha
         display: 'flex',
         flexDirection: 'column',
         gap: theme.spacing(3),
-        maxWidth: '500px',
+        width: '100%',
       }}
     >
       {/* Nome Field */}

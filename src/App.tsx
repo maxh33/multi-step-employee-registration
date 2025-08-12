@@ -29,6 +29,19 @@ function App() {
     setCurrentView('home');
   };
 
+  const handleDeleteEmployees = (employeeIds: string[]) => {
+    setEmployees((prev) => prev.filter((emp) => !employeeIds.includes(emp.id)));
+  };
+
+  const handleReorderEmployees = (fromIndex: number, toIndex: number) => {
+    setEmployees((prev) => {
+      const newEmployees = [...prev];
+      const [draggedEmployee] = newEmployees.splice(fromIndex, 1);
+      newEmployees.splice(toIndex, 0, draggedEmployee);
+      return newEmployees;
+    });
+  };
+
   const handleFormSubmit = (formData: EmployeeFormData): { success: boolean; error?: string } => {
     // Check for duplicate email (skip if editing same employee)
     const duplicateEmployee = employees.find(
@@ -92,6 +105,8 @@ function App() {
             onCreateNew={handleCreateNew}
             employees={employees}
             onEditEmployee={handleEditEmployee}
+            onDeleteEmployees={handleDeleteEmployees}
+            onReorderEmployees={handleReorderEmployees}
           />
         )}
 
