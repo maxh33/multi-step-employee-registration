@@ -13,7 +13,6 @@ import {
   Checkbox,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
@@ -25,7 +24,6 @@ interface ColaboradoresHomeProps {
   employees: Employee[];
   onEditEmployee: (employee: Employee) => void;
   onDeleteEmployees: (employeeIds: string[]) => void;
-  onReorderEmployees: (fromIndex: number, toIndex: number) => void;
 }
 
 const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
@@ -33,7 +31,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   employees,
   onEditEmployee,
   onDeleteEmployees,
-  onReorderEmployees,
 }) => {
   const theme = useTheme();
 
@@ -49,11 +46,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   // Actions menu state (3-dot menu for edit/delete)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [actionsMenuEmployeeId, setActionsMenuEmployeeId] = useState<string | null>(null);
-
-  // Drag and drop state
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedEmployeeId, setDraggedEmployeeId] = useState<string | null>(null);
-  const [dragOverEmployeeId, setDragOverEmployeeId] = useState<string | null>(null);
 
   // Sort employees based on current sort settings
   const sortedEmployees = useMemo(() => {
@@ -157,60 +149,9 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   };
 
   const handleRowClick = (employee: Employee) => {
-    if (!isDeleteMode && !isDragging) {
+    if (!isDeleteMode) {
       onEditEmployee(employee);
     }
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, employeeId: string) => {
-    e.stopPropagation();
-    setIsDragging(true);
-    setDraggedEmployeeId(employeeId);
-
-    // Set drag effect and data
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', employeeId);
-
-    // Close any open actions menu
-    setMenuPosition(null);
-    setActionsMenuEmployeeId(null);
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    setDraggedEmployeeId(null);
-    setDragOverEmployeeId(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent, employeeId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (draggedEmployeeId !== employeeId) {
-      setDragOverEmployeeId(employeeId);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverEmployeeId(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetEmployeeId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (draggedEmployeeId && draggedEmployeeId !== targetEmployeeId) {
-      const fromIndex = employees.findIndex((emp) => emp.id === draggedEmployeeId);
-      const toIndex = employees.findIndex((emp) => emp.id === targetEmployeeId);
-
-      if (fromIndex !== -1 && toIndex !== -1) {
-        onReorderEmployees(fromIndex, toIndex);
-      }
-    }
-
-    handleDragEnd();
   };
 
   return (
@@ -473,9 +414,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 onMouseEnter={() => setHoveredRowId(employee.id)}
                 onMouseLeave={() => setHoveredRowId(null)}
                 onClick={() => handleRowClick(employee)}
-                onDragOver={(e) => handleDragOver(e, employee.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, employee.id)}
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: isDeleteMode
@@ -491,18 +429,10 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                       : 'none',
                   cursor: isDeleteMode ? 'default' : 'pointer',
                   transition: 'grid-template-columns 0.3s ease, background-color 0.2s ease',
-                  backgroundColor:
-                    dragOverEmployeeId === employee.id
-                      ? theme.palette.primary.main + '20'
-                      : draggedEmployeeId === employee.id && isDragging
-                        ? theme.palette.grey[100]
-                        : 'transparent',
-                  opacity: draggedEmployeeId === employee.id && isDragging ? 0.7 : 1,
+                  backgroundColor: 'transparent',
+                  opacity: 1,
                   '&:hover': {
-                    backgroundColor:
-                      dragOverEmployeeId === employee.id
-                        ? theme.palette.primary.main + '20'
-                        : theme.palette.grey[50],
+                    backgroundColor: theme.palette.grey[50],
                   },
                 }}
               >
@@ -530,27 +460,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                   }}
                 >
                   {/* 6-dot drag handle - appears on hover */}
-                  {!isDeleteMode && hoveredRowId === employee.id && (
-                    <IconButton
-                      size="small"
-                      draggable={true}
-                      onDragStart={(e) => handleDragStart(e, employee.id)}
-                      onDragEnd={handleDragEnd}
-                      sx={{
-                        position: 'absolute',
-                        left: -24,
-                        visibility: hoveredRowId === employee.id ? 'visible' : 'hidden',
-                        transition: 'visibility 0.2s ease',
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        cursor: isDragging ? 'grabbing' : 'grab',
-                        '&:hover': {
-                          backgroundColor: theme.palette.grey[100],
-                        },
-                      }}
-                    >
-                      <DragIndicatorIcon fontSize="small" />
-                    </IconButton>
-                  )}
 
                   <Avatar
                     src={`https://i.pravatar.cc/32?u=${employee.email}`}

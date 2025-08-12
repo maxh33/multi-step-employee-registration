@@ -22,7 +22,7 @@ interface ColaboradorFormProps {
   currentStep?: number;
   onStepChange?: (step: number) => void;
   onNavigateHome?: () => void;
-  onSubmit?: (formData: EmployeeFormData) => { success: boolean; error?: string };
+  onSubmit?: (formData: EmployeeFormData) => Promise<{ success: boolean; error?: string }>;
   editingEmployee?: Employee | null;
 }
 
@@ -104,13 +104,13 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
         }, 100);
 
         // Wait for animation to complete
-        setTimeout(() => {
+        setTimeout(async () => {
           if (progressIntervalRef.current) {
             clearInterval(progressIntervalRef.current);
             progressIntervalRef.current = null;
           }
           if (onSubmit && formData.personalInfo && formData.professionalInfo) {
-            const result = onSubmit(formData as EmployeeFormData);
+            const result = await onSubmit(formData as EmployeeFormData);
             if (result.success) {
               // Success - clear form data and navigate
               clearFormData();
