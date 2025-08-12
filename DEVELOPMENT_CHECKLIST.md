@@ -16,7 +16,7 @@
   npm install @types/node
   ```
 - [x] Configure TypeScript strict mode in tsconfig.json
-- [ ] Set up ESLint and Prettier configuration
+- [x] Set up ESLint and Prettier configuration
 - [x] Create folder structure following PROJECT_GUIDELINES.md
 
 ### Environment Configuration

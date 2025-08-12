@@ -5,6 +5,7 @@ export interface PersonalInfo {
   lastName: string;
   email: string;
   phone: string;
+  activateOnCreate?: boolean; // Toggle field for "Ativar ao criar"
 }
 
 export interface ProfessionalInfo {
@@ -45,10 +46,24 @@ export interface ValidationResult {
   errors: Record<string, string>;
 }
 
+// Employee display data for the list
+export interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  department: string;
+  position: string;
+  status: 'Ativo' | 'Inativo';
+  avatar: string; // Avatar color or URL
+  createdAt: Date;
+}
+
 // Firebase related types
 export interface FirebaseEmployee extends EmployeeFormData {
   id: string;
-    createdAt: Timestamp; // Firebase Timestamp
+  createdAt: Timestamp; // Firebase Timestamp
   updatedAt: Timestamp; // Firebase Timestamp
   status: 'pending' | 'approved' | 'rejected';
 }

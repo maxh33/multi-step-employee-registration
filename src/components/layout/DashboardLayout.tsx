@@ -6,17 +6,13 @@ import Header from './Header';
 interface DashboardLayoutProps {
   children: React.ReactNode;
   showBreadcrumbs?: boolean;
-  currentStep?: number;
-  totalSteps?: number;
   onNavigateHome?: () => void;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
-  children, 
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+  children,
   showBreadcrumbs = false,
-  currentStep = 1,
-  totalSteps = 2,
-  onNavigateHome
+  onNavigateHome,
 }) => {
   const theme = useTheme();
   const sidebarWidth = 280;
@@ -25,7 +21,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       <Sidebar width={sidebarWidth} onNavigateHome={onNavigateHome} />
-      
+
       {/* Main Content Area */}
       <Box
         sx={{
@@ -36,10 +32,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         }}
       >
         {/* Header */}
-        <Header 
-          showBreadcrumbs={showBreadcrumbs}
-        />
-        
+        <Header showBreadcrumbs={showBreadcrumbs} />
+
         {/* Page Content */}
         <Box
           component="main"

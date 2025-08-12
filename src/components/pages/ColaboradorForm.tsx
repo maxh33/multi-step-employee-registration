@@ -8,22 +8,123 @@ import {
   Breadcrumbs,
   Link,
   LinearProgress,
+  Alert,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import VerticalStepIndicator from '../ui/VerticalStepIndicator';
+import PersonalInfoStep from '../forms/PersonalInfoStep';
+import ProfessionalInfoStep from '../forms/ProfessionalInfoStep';
+import { useFormData } from '../../hooks/useFormData';
+import { EmployeeFormData, Employee } from '../../types/employee';
 
 interface ColaboradorFormProps {
   onBack: () => void;
-  currentStep: number;
+  currentStep?: number;
   onStepChange?: (step: number) => void;
   onNavigateHome?: () => void;
+  onSubmit?: (formData: EmployeeFormData) => { success: boolean; error?: string };
+  editingEmployee?: Employee | null;
 }
 
-const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, onStepChange, onNavigateHome }) => {
+const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
+  onBack,
+  onNavigateHome,
+  onSubmit,
+  editingEmployee,
+}) => {
   const theme = useTheme();
-  const stepTitles = ['Infos Básicas', 'Infos Profissionais'];
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitProgress, setSubmitProgress] = React.useState(0);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  // Convert editingEmployee to form data format
+  const initialFormData = React.useMemo(() => {
+    if (!editingEmployee) return undefined;
+
+    return {
+      personalInfo: {
+        firstName: editingEmployee.firstName,
+        lastName: editingEmployee.lastName,
+        email: editingEmployee.email,
+        phone: editingEmployee.phone,
+        activateOnCreate: editingEmployee.status === 'Ativo',
+      },
+      professionalInfo: {
+        position: editingEmployee.position,
+        department: editingEmployee.department,
+        startDate: '',
+        salary: 0,
+      },
+      additionalInfo: {
+        emergencyContact: '',
+        notes: '',
+      },
+    };
+  }, [editingEmployee]);
+
+  const {
+    formData,
+    currentStep,
+    errors,
+    progress,
+    updatePersonalInfo,
+    updateProfessionalInfo,
+    validateCurrentStep,
+    nextStep,
+    previousStep,
+    clearFormData,
+  } = useFormData(initialFormData);
+
+  const stepTitles = ['Infos Básicas', 'Informações Profissionais'];
   const totalSteps = 2;
-    const progressPercentage = Math.round(((currentStep - 1) / (totalSteps - 1)) * 100);
+
+  const handleNext = async () => {
+    setSubmitError(null); // Clear any previous errors
+    if (validateCurrentStep()) {
+      if (currentStep < totalSteps) {
+        nextStep();
+      } else {
+        // Handle form submission with progress animation
+        setIsSubmitting(true);
+        setSubmitProgress(0);
+
+        // Simulate progress animation
+        const progressInterval = setInterval(() => {
+          setSubmitProgress((prev) => {
+            if (prev >= 100) {
+              clearInterval(progressInterval);
+              return 100;
+            }
+            return prev + 10;
+          });
+        }, 100);
+
+        // Wait for animation to complete
+        setTimeout(() => {
+          if (onSubmit && formData.personalInfo && formData.professionalInfo) {
+            const result = onSubmit(formData as EmployeeFormData);
+            if (result.success) {
+              // Success - clear form data and navigate
+              clearFormData();
+            } else {
+              // Handle duplicate error
+              setSubmitError(result.error || 'Erro ao enviar formulário');
+            }
+          }
+          setIsSubmitting(false);
+          setSubmitProgress(0);
+        }, 1200);
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      previousStep();
+    } else {
+      onBack();
+    }
+  };
 
   return (
     <Box
@@ -69,7 +170,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
               fontWeight: 500,
             }}
           >
-            Cadastrar Colaborador
+            {editingEmployee ? 'Editar Colaborador' : 'Cadastrar Colaborador'}
           </Typography>
         </Breadcrumbs>
 
@@ -85,14 +186,17 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
           <Box sx={{ width: '100%' }}>
             <LinearProgress
               variant="determinate"
-              value={progressPercentage}
+              value={isSubmitting ? submitProgress : progress}
               sx={{
                 height: 4,
                 borderRadius: 2,
                 backgroundColor: theme.palette.grey[200],
                 '& .MuiLinearProgress-bar': {
-                  backgroundColor: theme.palette.primary.main,
+                  backgroundColor: isSubmitting
+                    ? theme.palette.success.main
+                    : theme.palette.primary.main,
                   borderRadius: 2,
+                  transition: 'width 0.3s ease-in-out', // Smooth animation
                 },
               }}
             />
@@ -106,7 +210,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
               minWidth: '32px',
             }}
           >
-            {progressPercentage}%
+            {isSubmitting ? `${submitProgress}%` : `${progress}%`}
           </Typography>
         </Box>
       </Box>
@@ -125,158 +229,142 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onBack, currentStep, 
             overflow: 'hidden',
           }}
         >
-        <Box
-          sx={{
-            display: 'flex',
-            minHeight: '600px',
-          }}
-        >
-          {/* Left Side - Vertical Steps */}
           <Box
             sx={{
-              padding: theme.spacing(4, 3),
-              minWidth: '280px',
               display: 'flex',
-              flexDirection: 'column',
+              minHeight: '600px',
             }}
           >
-            <VerticalStepIndicator
-              currentStep={currentStep}
-              totalSteps={2}
-              stepTitles={stepTitles}
-            />
-            
-            {/* Voltar Button - Inside Left Sidebar */}
-            <Button
-              variant="text"
-              onClick={onBack}
-              sx={{
-                color: theme.palette.text.secondary,
-                fontWeight: 500,
-                textTransform: 'none',
-                padding: theme.spacing(1.5, 3),
-                marginTop: 'auto',
-                alignSelf: 'flex-start',
-              }}
-            >
-              Voltar
-            </Button>
-          </Box>
-
-          {/* Right Side - Form Content */}
-          <Box
-            sx={{
-              flex: 1,
-              padding: theme.spacing(4),
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: '500px',
-            }}
-          >
-            {/* Current Step Title */}
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.primary,
-                marginBottom: theme.spacing(3),
-                fontSize: '1.5rem',
-              }}
-            >
-              {stepTitles[currentStep - 1]}
-            </Typography>
-
-            {/* Form Content Area */}
+            {/* Left Side - Vertical Steps */}
             <Box
               sx={{
-                marginBottom: theme.spacing(4),
-              }}
-            >
-              {currentStep === 1 && (
-                <Box>
-                  {/* Placeholder for Step 1 form fields */}
-                  <Box
-                    sx={{
-                      padding: theme.spacing(4),
-                      textAlign: 'center',
-                      color: theme.palette.text.secondary,
-                      border: `2px dashed ${theme.palette.grey[300]}`,
-                      borderRadius: '8px',
-                    }}
-                  >
-                    <Typography variant="body1">
-                      Campos do formulário "Informações Básicas" serão implementados aqui
-                    </Typography>
-                    <Typography variant="body2" sx={{ marginTop: theme.spacing(1) }}>
-                      (Nome, Email, Telefone, etc.)
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-
-              {currentStep === 2 && (
-                <Box>
-                  {/* Placeholder for Step 2 form fields */}
-                  <Box
-                    sx={{
-                      padding: theme.spacing(4),
-                      textAlign: 'center',
-                      color: theme.palette.text.secondary,
-                      border: `2px dashed ${theme.palette.grey[300]}`,
-                      borderRadius: '8px',
-                    }}
-                  >
-                    <Typography variant="body1">
-                      Campos do formulário "Informações Profissionais" serão implementados aqui
-                    </Typography>
-                    <Typography variant="body2" sx={{ marginTop: theme.spacing(1) }}>
-                      (Cargo, Departamento, Data de Início, etc.)
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-            </Box>
-
-            {/* Form Navigation Button - Only Next/Finish */}
-            <Box
-              sx={{
+                padding: theme.spacing(4, 3),
+                minWidth: '280px',
                 display: 'flex',
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                marginTop: 'auto',
-                paddingTop: theme.spacing(4),
+                flexDirection: 'column',
               }}
             >
+              <VerticalStepIndicator
+                currentStep={currentStep}
+                totalSteps={2}
+                stepTitles={stepTitles}
+              />
+
+              {/* Voltar Button - Inside Left Sidebar */}
               <Button
-                variant="contained"
-                onClick={() => {
-                  if (currentStep < 2) {
-                    onStepChange?.(currentStep + 1);
-                  } else {
-                    // Handle form submission
-                    console.log('Form submitted!');
-                  }
-                }}
+                variant="text"
+                onClick={handleBack}
                 sx={{
-                  backgroundColor: theme.palette.primary.main,
-                  color: '#ffffff',
+                  color: theme.palette.text.secondary,
                   fontWeight: 500,
-                  padding: theme.spacing(1.5, 3),
-                  borderRadius: '8px',
                   textTransform: 'none',
-                  '&:hover': {
-                    backgroundColor: theme.palette.primary.dark,
-                  },
+                  padding: theme.spacing(1.5, 3),
+                  marginTop: 'auto',
+                  alignSelf: 'flex-start',
                 }}
               >
-                {currentStep === 2 ? 'Concluir' : 'Próximo'}
+                Voltar
               </Button>
             </Box>
+
+            {/* Right Side - Form Content */}
+            <Box
+              sx={{
+                flex: 1,
+                padding: theme.spacing(4),
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: '500px',
+              }}
+            >
+              {/* Current Step Title */}
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.primary,
+                  marginBottom: theme.spacing(3),
+                  fontSize: '1.5rem',
+                }}
+              >
+                {stepTitles[currentStep - 1]}
+              </Typography>
+
+              {/* Form Content Area */}
+              <Box
+                sx={{
+                  marginBottom: theme.spacing(4),
+                }}
+              >
+                {currentStep === 1 && (
+                  <PersonalInfoStep
+                    data={formData.personalInfo || {}}
+                    errors={errors}
+                    onChange={updatePersonalInfo}
+                  />
+                )}
+
+                {currentStep === 2 && (
+                  <ProfessionalInfoStep
+                    data={formData.professionalInfo || {}}
+                    errors={errors}
+                    onChange={updateProfessionalInfo}
+                  />
+                )}
+              </Box>
+
+              {/* Error Display */}
+              {submitError && (
+                <Box sx={{ marginTop: theme.spacing(2) }}>
+                  <Alert severity="error" sx={{ borderRadius: '8px' }}>
+                    {submitError}
+                  </Alert>
+                </Box>
+              )}
+
+              {/* Form Navigation Button - Only Next/Finish */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  marginTop: 'auto',
+                  paddingTop: theme.spacing(4),
+                }}
+              >
+                <Button
+                  variant="contained"
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                  sx={{
+                    backgroundColor: theme.palette.primary.main,
+                    color: '#ffffff',
+                    fontWeight: 500,
+                    padding: theme.spacing(1.5, 3),
+                    borderRadius: '8px',
+                    textTransform: 'none',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                    },
+                    '&:disabled': {
+                      backgroundColor: theme.palette.grey[400],
+                      color: theme.palette.grey[600],
+                    },
+                  }}
+                >
+                  {isSubmitting
+                    ? 'Enviando...'
+                    : currentStep === 2
+                      ? editingEmployee
+                        ? 'Atualizar'
+                        : 'Concluir'
+                      : 'Próximo'}
+                </Button>
+              </Box>
+            </Box>
           </Box>
-        </Box>
         </Paper>
       </Box>
-
     </Box>
   );
 };
