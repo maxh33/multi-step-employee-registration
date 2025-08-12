@@ -167,59 +167,76 @@
 - [ ] Optimize image assets
 - [ ] Test bundle size and performance metrics
 
-## Phase 6: Testing
+## Phase 6: Testing (Updated for 4-Field Implementation)
 
-### Unit Testing
-- [ ] Test form validation functions
-- [ ] Test custom hooks (useFormData, useValidation)
-- [ ] Test Firebase service functions
-- [ ] Test utility functions
-- [ ] Achieve 80%+ code coverage for utilities
+### Playwright E2E Testing Setup
+- [ ] Install Playwright: `npm install --save-dev @playwright/test`
+- [ ] Install browser dependencies: `npx playwright install`
+- [ ] Configure playwright.config.ts for staging environment
+- [ ] Create test data helpers for 4-field form structure
+- [ ] Set up Firebase test environment configuration
 
-### Component Testing
-- [ ] Test each form step component
-- [ ] Test form navigation component
-- [ ] Test step indicator component
-- [ ] Test error boundary components
-- [ ] Mock Firebase operations for testing
+### Core Test Scenarios (Showcase-Focused)
+- [ ] **Happy Path Test**: Complete form submission with valid data (firstName, email, department)
+- [ ] **Validation Test**: Test required field validation and error messages
+- [ ] **Firebase Integration Test**: Verify data persists to Firestore correctly
+- [ ] **Navigation Test**: Test 2-step form navigation (Personal Info → Professional Info)
 
-### Integration Testing
-- [ ] Test complete form flow
-- [ ] Test form data persistence
-- [ ] Test Firebase integration
-- [ ] Test error scenarios
-- [ ] Test responsive behavior on different devices
+### Test Implementation
+- [ ] Create `tests/core/form-submission.spec.ts` - End-to-end form completion
+- [ ] Create `tests/core/form-validation.spec.ts` - Field validation scenarios
+- [ ] Create `tests/core/firebase-integration.spec.ts` - Database persistence verification
+- [ ] Create `tests/core/navigation.spec.ts` - Step navigation and progress tracking
+- [ ] Create `tests/utils/test-data.ts` - Test data factory for 4 fields
+- [ ] Create `tests/utils/firebase-helpers.ts` - Firebase test utilities
 
-### End-to-End Testing
-- [ ] Set up Cypress or Playwright
-- [ ] Test complete registration flow
-- [ ] Test form validation scenarios
-- [ ] Test network error handling
-- [ ] Test cross-browser compatibility
+### Testing Strategy Notes
+- **Scope**: Only test implemented features (4 required fields: firstName, email, activateOnCreate, department)
+- **Validation**: All 4 fields are required for form submission
+- **Environment**: Test against staging deployment URL
+- **Coverage**: 100% coverage of implemented user journey
+- **Cross-browser**: Chrome, Firefox, Safari testing
+- **Responsive**: Desktop and mobile viewport testing
 
-## Phase 7: Deployment Preparation
+### Component Testing (Optional)
+- [ ] Test PersonalInfoStep component (firstName, email, activateOnCreate)
+- [ ] Test ProfessionalInfoStep component (department selection)
+- [ ] Test ColaboradorForm main component
+- [ ] Test form validation hooks
+- [ ] Mock Firebase operations for isolated testing
+
+## Phase 7: Deployment Preparation (Updated for Staging Workflow)
+
+### Staging Environment Setup
+- [ ] Create Vercel account and connect GitHub repository
+- [ ] Configure staging environment variables in Vercel dashboard
+- [ ] Set up automatic deployments from `feature/testing-deployment` branch
+- [ ] Create `vercel.json` configuration file
+- [ ] Deploy staging environment and verify URL accessibility
+- [ ] Test Firebase connection in staging environment
 
 ### Build Optimization
 - [ ] Configure production build settings
-- [ ] Optimize bundle splitting
-- [ ] Implement environment-specific configurations
-- [ ] Test production build locally
-- [ ] Optimize asset loading
+- [ ] Test build locally: `npm run build`
+- [ ] Verify bundle size and optimization
+- [ ] Test staging build deployment
+- [ ] Optimize asset loading for production
 
 ### Firebase Configuration
 - [ ] Set up Firebase security rules for production
-- [ ] Configure Firebase indexes
-- [ ] Set up Firebase monitoring
-- [ ] Test Firebase rules with different scenarios
-- [ ] Configure backup and recovery
+- [ ] Test Firebase operations in staging environment
+- [ ] Configure Firebase indexes if needed
+- [ ] Verify Firestore security rules work correctly
+- [ ] Set up Firebase monitoring (optional)
 
-### Vercel Deployment
-- [ ] Create Vercel account and project
-- [ ] Configure environment variables in Vercel
-- [ ] Set up automatic deployments from GitHub
-- [ ] Configure custom domain (optional)
-- [ ] Test production deployment
-- [ ] Set up monitoring and analytics
+### Production Deployment Workflow
+- [ ] Run Playwright tests against staging environment
+- [ ] Verify all 4 form fields work correctly in staging
+- [ ] Test complete user journey on staging URL
+- [ ] Create pull request from staging to main
+- [ ] Configure production environment variables in Vercel
+- [ ] Set up automatic deployments from `main` branch
+- [ ] Deploy to production and verify functionality
 
 ## Phase 8: Documentation and Quality Assurance
 

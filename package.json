@@ -35,7 +35,11 @@
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write src/**/*.{ts,tsx,js,jsx,json,css,md}",
     "format:check": "prettier --check src/**/*.{ts,tsx,js,jsx,json,css,md}",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:staging": "PLAYWRIGHT_BASE_URL=https://your-staging-url.vercel.app playwright test",
+    "serve": "npx serve -s build -l 3000"
   },
   "browserslist": {
     "production": [
@@ -50,6 +54,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "eslint-config-prettier": "^10.1.8",
@@ -58,6 +63,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "wait-on": "^8.0.4"
   }
 }

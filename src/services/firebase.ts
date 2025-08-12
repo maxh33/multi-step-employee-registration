@@ -33,17 +33,14 @@ export const db = getFirestore(app);
 // Collection reference
 const employeesCollectionRef = collection(db, 'employees');
 
-// Helper to convert Firestore DocumentData to Employee type
+// Helper to convert Firestore DocumentData to Employee type - 4 fields only
 const convertDocToEmployee = (doc: QueryDocumentSnapshot<DocumentData>): Employee => {
   const data = doc.data();
   return {
     id: doc.id,
     firstName: data.personalInfo.firstName,
-    lastName: data.personalInfo.lastName,
     email: data.personalInfo.email,
-    phone: data.personalInfo.phone,
     department: data.professionalInfo.department,
-    position: data.professionalInfo.position,
     status: data.status,
     avatar: data.avatar || '#CCCCCC',
     createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
@@ -93,9 +90,8 @@ const handleFirebaseError = (error: unknown, operation?: string): Error => {
 export const createEmployee = async (data: EmployeeFormData): Promise<string> => {
   try {
     const newEmployeeData = {
-      personalInfo: data.personalInfo,
-      professionalInfo: data.professionalInfo,
-      additionalInfo: data.additionalInfo,
+      personalInfo: data.personalInfo, // firstName, email, activateOnCreate
+      professionalInfo: data.professionalInfo, // department
       status: data.personalInfo.activateOnCreate ? 'Ativo' : 'Inativo',
       avatar: '#FF6B6B',
       createdAt: Timestamp.now(),
@@ -116,14 +112,11 @@ export const updateEmployee = async (
     const updateData: Partial<EmployeeFormData & { status: string; avatar: string }> = {};
 
     if (data.personalInfo) {
-      updateData.personalInfo = data.personalInfo;
+      updateData.personalInfo = data.personalInfo; // firstName, email, activateOnCreate
       updateData.status = data.personalInfo.activateOnCreate ? 'Ativo' : 'Inativo';
     }
     if (data.professionalInfo) {
-      updateData.professionalInfo = data.professionalInfo;
-    }
-    if (data.additionalInfo) {
-      updateData.additionalInfo = data.additionalInfo;
+      updateData.professionalInfo = data.professionalInfo; // department
     }
 
     await updateDoc(employeeDocRef, updateData);
