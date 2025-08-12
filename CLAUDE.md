@@ -83,10 +83,22 @@ src/
 
 ## Development Commands
 
+### Core Development
 - `npm start` - Start development server
-- `npm test` - Run tests  
 - `npm run build` - Build for production
-- `npm run lint` - Lint code (if configured)
+- `npm run serve` - Serve production build locally
+
+### Code Quality  
+- `npm run lint` - Run ESLint
+- `npm run lint:fix` - Fix ESLint issues
+- `npm run type-check` - Run TypeScript checks
+- `npm run format` - Format code with Prettier
+
+### Testing
+- `npm test` - Run unit tests
+- `npm run test:e2e` - Run Playwright E2E tests (full browser suite)
+- `npm run test:e2e:ui` - Run E2E tests with interactive UI
+- `npm run test:e2e:staging` - Run E2E tests against staging environment
 
 ## Key Implementation Guidelines
 

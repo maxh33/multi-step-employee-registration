@@ -45,8 +45,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Start application
-        run: npm run serve &
+      - name: Run Playwright tests
+        run: npm run test:e2e -- tests/core/simple-validation.spec.ts
         env:
           # Use staging Firebase config for E2E testing
           REACT_APP_FIREBASE_API_KEY: ${{ secrets.STAGING_REACT_APP_FIREBASE_API_KEY }}
@@ -55,13 +55,6 @@ jobs:
           REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.STAGING_REACT_APP_FIREBASE_STORAGE_BUCKET }}
           REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.STAGING_REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
           REACT_APP_FIREBASE_APP_ID: ${{ secrets.STAGING_REACT_APP_FIREBASE_APP_ID }}
-
-      - name: Wait for application to start
-        run: npx wait-on http://localhost:3000 --timeout 60000
-
-      - name: Run Playwright tests
-        run: npm run test:e2e -- tests/core/simple-validation.spec.ts
-        env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
 
       - name: Upload test results
