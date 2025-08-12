@@ -35,7 +35,9 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
     }
     if (!formData.personalInfo?.email?.trim()) {
       errors['personalInfo.email'] = 'E-mail é obrigatório';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.personalInfo.email)) {
+    } else if (
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.personalInfo.email)
+    ) {
       errors['personalInfo.email'] = 'E-mail deve ter um formato válido';
     }
   }
@@ -58,7 +60,6 @@ const calculateProgress = (formData: Partial<EmployeeFormData>): number => {
   const fields = [
     formData.personalInfo?.firstName,
     formData.personalInfo?.email,
-    true, // Toggle always counts as filled
     formData.professionalInfo?.department,
   ];
 

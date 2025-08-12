@@ -45,18 +45,39 @@ const convertDocToEmployee = (doc: QueryDocumentSnapshot<DocumentData>): Employe
     department: data.professionalInfo.department,
     position: data.professionalInfo.position,
     status: data.status,
-    avatar: data.avatar || '#CCCCCC', // Default avatar if not present
+    avatar: data.avatar || '#CCCCCC',
     createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
   };
 };
 
+// Helper to handle Firebase errors and return a new Error object
+const handleFirebaseError = (error: unknown): Error => {
+  let message = 'Ocorreu um erro inesperado. Tente novamente.';
+  if (error && typeof error === 'object' && 'code' in error) {
+    const firebaseError = error as { code: string };
+    switch (firebaseError.code) {
+      case 'permission-denied':
+        message = 'Permissão negada. Verifique as regras de segurança do Firestore.';
+        break;
+      case 'unavailable':
+        message = 'O serviço está temporariamente indisponível. Tente novamente mais tarde.';
+        break;
+      case 'not-found':
+        message = 'O documento solicitado não foi encontrado.';
+        break;
+      case 'deadline-exceeded':
+        message = 'O tempo para a operação foi excedido. Verifique sua conexão com a internet.';
+        break;
+      default:
+        message = `Um erro ocorreu: ${firebaseError.code}. Por favor, contate o suporte.`;
+    }
+  }
+  console.error('Firebase Error:', error);
+  return new Error(message);
+};
+
 // Firebase Operations
 
-/**
- * Creates a new employee document in Firestore.
- * @param data Employee form data.
- * @returns The ID of the newly created document.
- */
 export const createEmployee = async (data: EmployeeFormData): Promise<string> => {
   try {
     const newEmployeeData = {
@@ -64,21 +85,16 @@ export const createEmployee = async (data: EmployeeFormData): Promise<string> =>
       professionalInfo: data.professionalInfo,
       additionalInfo: data.additionalInfo,
       status: data.personalInfo.activateOnCreate ? 'Ativo' : 'Inativo',
-      avatar: '#FF6B6B', // Default avatar color for new employees
+      avatar: '#FF6B6B',
       createdAt: Timestamp.now(),
     };
     const docRef = await addDoc(employeesCollectionRef, newEmployeeData);
     return docRef.id;
   } catch (error) {
-    throw error;
+    throw handleFirebaseError(error);
   }
 };
 
-/**
- * Updates an existing employee document in Firestore.
- * @param id The ID of the employee document to update.
- * @param data Partial employee form data to update.
- */
 export const updateEmployee = async (
   id: string,
   data: Partial<EmployeeFormData>
@@ -100,14 +116,10 @@ export const updateEmployee = async (
 
     await updateDoc(employeeDocRef, updateData);
   } catch (error) {
-    throw error;
+    throw handleFirebaseError(error);
   }
 };
 
-/**
- * Fetches a single employee document from Firestore by ID.
- * @param id The ID of the employee document to fetch.n * @returns The Employee object or null if not found.
- */
 export const getEmployee = async (id: string): Promise<Employee | null> => {
   try {
     const employeeDocRef = doc(db, 'employees', id);
@@ -119,33 +131,25 @@ export const getEmployee = async (id: string): Promise<Employee | null> => {
       return null;
     }
   } catch (error) {
-    throw error;
+    throw handleFirebaseError(error);
   }
 };
 
-/**
- * Fetches all employee documents from Firestore.
- * @returns An array of Employee objects.
- */
 export const getAllEmployees = async (): Promise<Employee[]> => {
   try {
     const q = query(employeesCollectionRef, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(convertDocToEmployee);
   } catch (error) {
-    throw error;
+    throw handleFirebaseError(error);
   }
 };
 
-/**
- * Deletes an employee document from Firestore.
- * @param id The ID of the employee document to delete.
- */
 export const deleteEmployee = async (id: string): Promise<void> => {
   try {
     const employeeDocRef = doc(db, 'employees', id);
     await deleteDoc(employeeDocRef);
   } catch (error) {
-    throw error;
+    throw handleFirebaseError(error);
   }
 };
