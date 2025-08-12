@@ -110,6 +110,21 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
             progressIntervalRef.current = null;
           }
           if (onSubmit && formData.personalInfo && formData.professionalInfo) {
+            // Runtime validation to ensure required fields exist before type assertion
+            const isValidForSubmission =
+              formData.personalInfo.firstName?.trim() &&
+              formData.personalInfo.email?.trim() &&
+              formData.professionalInfo.department?.trim();
+
+            if (!isValidForSubmission) {
+              setSubmitError(
+                'Dados obrigatórios estão faltando. Verifique os campos obrigatórios.'
+              );
+              setIsSubmitting(false);
+              setSubmitProgress(0);
+              return;
+            }
+
             const result = await onSubmit(formData as EmployeeFormData);
             if (result.success) {
               // Success - clear form data and navigate
@@ -130,6 +145,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
     return () => {
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
       }
     };
   }, []);

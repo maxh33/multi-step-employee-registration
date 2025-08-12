@@ -36,7 +36,9 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
     if (!formData.personalInfo?.email?.trim()) {
       errors['personalInfo.email'] = 'E-mail é obrigatório';
     } else if (
-      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.personalInfo.email)
+      !/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)+$/.test(
+        formData.personalInfo.email
+      )
     ) {
       errors['personalInfo.email'] = 'E-mail deve ter um formato válido';
     }

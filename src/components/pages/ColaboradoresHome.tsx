@@ -462,7 +462,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                   {/* 6-dot drag handle - appears on hover */}
 
                   <Avatar
-                    src={`https://i.pravatar.cc/32?u=${employee.email}`}
                     alt={`${employee.firstName} ${employee.lastName}`}
                     sx={{
                       width: 32,
@@ -470,10 +469,11 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                       backgroundColor: employee.avatar,
                       fontSize: '14px',
                       fontWeight: 600,
+                      color: '#ffffff',
                     }}
                   >
-                    {employee.firstName.charAt(0)}
-                    {employee.lastName.charAt(0)}
+                    {employee.firstName.charAt(0).toUpperCase()}
+                    {employee.lastName.charAt(0).toUpperCase()}
                   </Avatar>
                   <Typography
                     variant="body2"
