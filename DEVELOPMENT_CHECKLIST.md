@@ -16,7 +16,7 @@
   npm install @types/node
   ```
 - [x] Configure TypeScript strict mode in tsconfig.json
-- [ ] Set up ESLint and Prettier configuration
+- [x] Set up ESLint and Prettier configuration
 - [x] Create folder structure following PROJECT_GUIDELINES.md
 
 ### Environment Configuration
@@ -73,7 +73,7 @@
 - [x] Export all types from index file
 
 ### State Management Setup
-- [ ] Create useFormData custom hook
+- [x] Create useFormData custom hook
 - [ ] Implement form data persistence to localStorage
 - [ ] Create form validation utilities
 - [ ] Set up error state management
@@ -100,9 +100,9 @@
 - [ ] Test responsive behavior
 
 ### Step Two: Professional Information
-- [ ] Create ProfessionalInfoStep component
+- [x] Create ProfessionalInfoStep component
 - [ ] Implement form fields (position, department, startDate, salary)
-- [ ] Add dropdown/select components for structured data
+- [x] Add dropdown/select components for structured data
 - [ ] Implement date picker for startDate
 - [ ] Add salary input with proper formatting
 - [ ] Validate required fields and data formats

@@ -10,7 +10,7 @@ interface VerticalStepIndicatorProps {
 
 const VerticalStepIndicator: React.FC<VerticalStepIndicatorProps> = ({
   currentStep,
-  totalSteps,
+  totalSteps: _totalSteps,
   stepTitles,
 }) => {
   const theme = useTheme();
@@ -56,23 +56,16 @@ const VerticalStepIndicator: React.FC<VerticalStepIndicatorProps> = ({
                   justifyContent: 'center',
                   fontSize: '14px',
                   fontWeight: 500,
-                  backgroundColor: isCompleted || isActive 
-                    ? theme.palette.primary.main 
-                    : theme.palette.grey[200],
-                  color: isCompleted || isActive 
-                    ? '#ffffff' 
-                    : theme.palette.grey[600],
+                  backgroundColor:
+                    isCompleted || isActive ? theme.palette.primary.main : theme.palette.grey[200],
+                  color: isCompleted || isActive ? '#ffffff' : theme.palette.grey[600],
                   transition: 'all 0.3s ease',
                   flexShrink: 0,
                   position: 'relative',
                   zIndex: 1,
                 }}
               >
-                {isCompleted ? (
-                  <CheckIcon sx={{ fontSize: '16px' }} />
-                ) : (
-                  stepNumber
-                )}
+                {isCompleted ? <CheckIcon sx={{ fontSize: '16px' }} /> : stepNumber}
               </Box>
 
               {/* Step Label */}
@@ -81,9 +74,7 @@ const VerticalStepIndicator: React.FC<VerticalStepIndicatorProps> = ({
                 sx={{
                   fontSize: '14px',
                   fontWeight: isActive ? 500 : 400,
-                  color: isActive 
-                    ? theme.palette.text.primary 
-                    : theme.palette.text.secondary,
+                  color: isActive ? theme.palette.text.primary : theme.palette.text.secondary,
                   lineHeight: 1.4,
                 }}
               >
@@ -100,9 +91,8 @@ const VerticalStepIndicator: React.FC<VerticalStepIndicatorProps> = ({
                   top: '32px',
                   width: '2px',
                   height: theme.spacing(3), // Same as gap between steps
-                  backgroundColor: currentStep > stepNumber 
-                    ? theme.palette.primary.main 
-                    : theme.palette.grey[300],
+                  backgroundColor:
+                    currentStep > stepNumber ? theme.palette.primary.main : theme.palette.grey[300],
                   transition: 'all 0.3s ease',
                 }}
               />

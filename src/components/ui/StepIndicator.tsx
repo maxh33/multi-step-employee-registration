@@ -8,13 +8,9 @@ interface StepIndicatorProps {
   stepTitles: string[];
 }
 
-const StepIndicator: React.FC<StepIndicatorProps> = ({
-  currentStep,
-  totalSteps,
-  stepTitles,
-}) => {
+const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, totalSteps, stepTitles }) => {
   const theme = useTheme();
-  
+
   // Calculate progress percentage
   const progressPercentage = Math.round(((currentStep - 1) / (totalSteps - 1)) * 100);
 
@@ -50,7 +46,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
             }}
           />
         </Box>
-        
+
         {/* Percentage */}
         <Typography
           variant="body2"
@@ -78,7 +74,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
           const stepNumber = index + 1;
           const isActive = currentStep === stepNumber;
           const isCompleted = currentStep > stepNumber;
-          
+
           return (
             <Box
               key={index}
@@ -101,22 +97,15 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
                   justifyContent: 'center',
                   fontSize: '14px',
                   fontWeight: 500,
-                  backgroundColor: isCompleted || isActive 
-                    ? theme.palette.primary.main 
-                    : theme.palette.grey[200],
-                  color: isCompleted || isActive 
-                    ? '#ffffff' 
-                    : theme.palette.grey[600],
+                  backgroundColor:
+                    isCompleted || isActive ? theme.palette.primary.main : theme.palette.grey[200],
+                  color: isCompleted || isActive ? '#ffffff' : theme.palette.grey[600],
                   marginBottom: theme.spacing(1),
                   transition: 'all 0.3s ease',
                   zIndex: 2,
                 }}
               >
-                {isCompleted ? (
-                  <CheckIcon sx={{ fontSize: '16px' }} />
-                ) : (
-                  stepNumber
-                )}
+                {isCompleted ? <CheckIcon sx={{ fontSize: '16px' }} /> : stepNumber}
               </Box>
 
               {/* Step Label */}
@@ -125,9 +114,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
                 sx={{
                   fontSize: '12px',
                   fontWeight: isActive ? 500 : 400,
-                  color: isActive 
-                    ? theme.palette.text.primary 
-                    : theme.palette.text.secondary,
+                  color: isActive ? theme.palette.text.primary : theme.palette.text.secondary,
                   textAlign: 'center',
                   lineHeight: 1.2,
                   maxWidth: '120px',

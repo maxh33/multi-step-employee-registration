@@ -1,22 +1,12 @@
 import React from 'react';
-import {
-  AppBar,
-  Box,
-  Toolbar,
-  Typography,
-  Avatar,
-  useTheme,
-} from '@mui/material';
+import { AppBar, Box, Toolbar, Typography, Avatar, useTheme } from '@mui/material';
 
 interface HeaderProps {
   showBreadcrumbs?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-  showBreadcrumbs = false 
-}) => {
+const Header: React.FC<HeaderProps> = ({ showBreadcrumbs: _showBreadcrumbs = false }) => {
   const theme = useTheme();
-
 
   return (
     <>
@@ -29,50 +19,51 @@ const Header: React.FC<HeaderProps> = ({
           zIndex: theme.zIndex.drawer + 1,
         }}
       >
-      <Toolbar
-        sx={{
-          justifyContent: 'space-between',
-          padding: theme.spacing(0, 3),
-          minHeight: '64px',
-        }}
-      >
-        {/* Empty space where breadcrumbs were */}
-        <Box />
-
-        {/* Right Side Actions */}
-        <Box
+        <Toolbar
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: theme.spacing(1),
+            justifyContent: 'space-between',
+            padding: theme.spacing(0, 3),
+            minHeight: '64px',
           }}
         >
-          {/* User Profile */}
-          <Avatar
+          {/* Empty space where breadcrumbs were */}
+          <Box />
+
+          {/* Right Side Actions */}
+          <Box
             sx={{
-              width: 32,
-              height: 32,
-              backgroundColor: theme.palette.primary.main,
-              fontSize: '14px',
-              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: theme.spacing(1),
             }}
           >
-            M
-          </Avatar>
-          <Typography
-            variant="body2"
-            sx={{
-              color: theme.palette.text.primary,
-              fontWeight: 500,
-              fontSize: '14px',
-            }}
-          >
-            Max
-          </Typography>
-        </Box>
-      </Toolbar>
-    </AppBar>
-    
+            {/* User Profile */}
+            <Avatar
+              src="/max1.webp"
+              alt="Max Haider"
+              sx={{
+                width: 32,
+                height: 32,
+                backgroundColor: theme.palette.primary.main,
+                fontSize: '14px',
+                fontWeight: 500,
+              }}
+            >
+              M
+            </Avatar>
+            <Typography
+              variant="body2"
+              sx={{
+                color: theme.palette.text.primary,
+                fontWeight: 500,
+                fontSize: '14px',
+              }}
+            >
+              Max
+            </Typography>
+          </Box>
+        </Toolbar>
+      </AppBar>
     </>
   );
 };
