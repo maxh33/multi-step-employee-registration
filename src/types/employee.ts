@@ -33,6 +33,7 @@ export interface FormState {
   errors: Record<string, string>;
   isSubmitting: boolean;
   isValid: boolean;
+  localStorageError: string | null;
 }
 
 // Validation error types

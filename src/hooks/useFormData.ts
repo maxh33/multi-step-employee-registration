@@ -79,6 +79,7 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
         errors: {},
         isSubmitting: false,
         isValid: false,
+        localStorageError: null, // Initialize new state
       };
     }
 
@@ -93,9 +94,18 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
           errors: {},
           isSubmitting: false,
           isValid: false,
+          localStorageError: null, // No error
         };
       } catch (error) {
         console.warn('Failed to parse saved form data:', error);
+        return {
+          currentStep: 1,
+          formData: initialFormData, // Reset to initial if corrupted
+          errors: {},
+          isSubmitting: false,
+          isValid: false,
+          localStorageError: 'Dados salvos corrompidos. O formulário foi resetado.', // Set error message
+        };
       }
     }
 
@@ -105,6 +115,7 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
       errors: {},
       isSubmitting: false,
       isValid: false,
+      localStorageError: null, // No error
     };
   });
 
@@ -219,6 +230,7 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
       errors: {},
       isSubmitting: false,
       isValid: false,
+      localStorageError: null, // Clear error on reset
     });
   }, []);
 
@@ -233,6 +245,7 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
     isSubmitting: formState.isSubmitting,
     isValid: formState.isValid,
     progress: currentProgress,
+    localStorageError: formState.localStorageError, // Return new state
 
     // Actions
     updateFormData,

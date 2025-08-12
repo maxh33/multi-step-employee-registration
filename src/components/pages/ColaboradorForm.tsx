@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Box,
   Typography,
@@ -36,6 +36,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitProgress, setSubmitProgress] = React.useState(0);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Convert editingEmployee to form data format
   const initialFormData = React.useMemo(() => {
@@ -89,10 +90,13 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
         setSubmitProgress(0);
 
         // Simulate progress animation
-        const progressInterval = setInterval(() => {
+        progressIntervalRef.current = setInterval(() => {
           setSubmitProgress((prev) => {
             if (prev >= 100) {
-              clearInterval(progressInterval);
+              if (progressIntervalRef.current) {
+                clearInterval(progressIntervalRef.current);
+                progressIntervalRef.current = null;
+              }
               return 100;
             }
             return prev + 10;
@@ -101,6 +105,10 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
 
         // Wait for animation to complete
         setTimeout(() => {
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
           if (onSubmit && formData.personalInfo && formData.professionalInfo) {
             const result = onSubmit(formData as EmployeeFormData);
             if (result.success) {
@@ -117,6 +125,14 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
       }
     }
   };
+
+  React.useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleBack = () => {
     if (currentStep > 1) {

@@ -6,6 +6,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import ColaboradoresHome from './components/pages/ColaboradoresHome';
 import ColaboradorForm from './components/pages/ColaboradorForm';
 import { Employee, EmployeeFormData } from './types/employee';
+import { v4 as uuidv4 } from 'uuid';
 
 type AppView = 'home' | 'form';
 
@@ -76,7 +77,7 @@ function App() {
       const randomColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
 
       const newEmployee: Employee = {
-        id: Date.now().toString(), // Simple ID generation
+        id: uuidv4(), // Use uuidv4() for ID generation
         firstName: formData.personalInfo.firstName || '',
         lastName: formData.personalInfo.lastName || '',
         email: formData.personalInfo.email || '',
