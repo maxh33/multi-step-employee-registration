@@ -210,6 +210,23 @@ interface FirebaseOperations {
 - Set up Firebase monitoring and alerting
 - Implement backup strategy for critical data
 
+## Future Features and Planned Enhancements
+
+### Table Sorting and Filtering
+- **Current Status**: Arrow indicators (↑↓) visible on Colaboradores table headers
+- **Planned Implementation**: 
+  - Clickable column headers for sorting (ascending/descending)
+  - Filter functionality by Nome, Email, Departamento, and Status
+  - Persist sort preferences in localStorage
+  - Integration with Firebase queries for server-side sorting
+
+### Additional Planned Features
+- Employee profile viewing and editing
+- Bulk employee import/export
+- Advanced search and filtering options
+- Employee status management workflow
+- Notification system for approval process
+
 ## Common Pitfalls to Avoid
 
 1. **Firebase Costs**: Monitor usage to stay within free tier

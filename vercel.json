@@ -1,0 +1,16 @@
+{
+  "env": {
+    "REACT_APP_ENVIRONMENT": "staging"
+  },
+  "build": {
+    "env": {
+      "REACT_APP_ENVIRONMENT": "staging"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
