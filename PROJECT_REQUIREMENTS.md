@@ -51,13 +51,15 @@ To connect your application to a Firebase project, you'll need to configure it w
 
 Here's a list of the common secrets you'll need from your Firebase project's configuration:
 
-- **FIREBASE_API_KEY**: A unique key that authenticates your requests to Firebase services
-- **FIREBASE_AUTH_DOMAIN**: The domain for your Firebase project's authentication services
-- **FIREBASE_PROJECT_ID**: The unique identifier for your Firebase project
-- **FIREBASE_STORAGE_BUCKET**: The default bucket for Firebase Storage
-- **FIREBASE_MESSAGING_SENDER_ID**: An ID for Firebase Cloud Messaging
-- **FIREBASE_APP_ID**: The unique identifier for your web app within the Firebase project
-- **FIREBASE_DATABASE_URL**: The URL for the Realtime Database, if you're using it instead of Firestore
+- **REACT_APP_FIREBASE_API_KEY**: A unique key that authenticates your requests to Firebase services
+- **REACT_APP_FIREBASE_AUTH_DOMAIN**: The domain for your Firebase project's authentication services
+- **REACT_APP_FIREBASE_PROJECT_ID**: The unique identifier for your Firebase project
+- **REACT_APP_FIREBASE_STORAGE_BUCKET**: The default bucket for Firebase Storage
+- **REACT_APP_FIREBASE_MESSAGING_SENDER_ID**: An ID for Firebase Cloud Messaging
+- **REACT_APP_FIREBASE_APP_ID**: The unique identifier for your web app within the Firebase project
+- **REACT_APP_FIREBASE_DATABASE_URL**: The URL for the Realtime Database, if you're using it instead of Firestore
+
+*Note: The `REACT_APP_` prefix is required for React environment variables to be accessible in the frontend build process.*
 
 ## Design Reference
 
