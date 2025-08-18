@@ -5,6 +5,7 @@ import {
   Button,
   Paper,
   useTheme,
+  useMediaQuery,
   Breadcrumbs,
   Link,
   LinearProgress,
@@ -33,6 +34,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
   editingEmployee,
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitProgress, setSubmitProgress] = React.useState(0);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
@@ -262,136 +264,250 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
           <Box
             sx={{
               display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
               minHeight: '600px',
             }}
           >
-            {/* Left Side - Vertical Steps */}
-            <Box
-              sx={{
-                padding: theme.spacing(4, 3),
-                minWidth: '280px',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <VerticalStepIndicator
-                currentStep={currentStep}
-                totalSteps={2}
-                stepTitles={stepTitles}
-              />
-
-              {/* Voltar Button - Inside Left Sidebar */}
-              <Button
-                variant="text"
-                onClick={handleBack}
-                sx={{
-                  color: theme.palette.text.secondary,
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  padding: theme.spacing(1.5, 3),
-                  marginTop: 'auto',
-                  alignSelf: 'flex-start',
-                }}
-              >
-                Voltar
-              </Button>
-            </Box>
-
-            {/* Right Side - Form Content */}
-            <Box
-              sx={{
-                flex: 1,
-                padding: theme.spacing(4),
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: '500px',
-              }}
-            >
-              {/* Current Step Title */}
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 500,
-                  color: theme.palette.text.primary,
-                  marginBottom: theme.spacing(3),
-                  fontSize: '1.5rem',
-                }}
-              >
-                {stepTitles[currentStep - 1]}
-              </Typography>
-
-              {/* Form Content Area */}
+            {/* Mobile Layout: Single Column with Step Title + Form Content */}
+            {isMobile ? (
               <Box
                 sx={{
-                  marginBottom: theme.spacing(4),
-                }}
-              >
-                {currentStep === 1 && (
-                  <PersonalInfoStep
-                    data={formData.personalInfo || {}}
-                    errors={errors}
-                    onChange={updatePersonalInfo}
-                  />
-                )}
-
-                {currentStep === 2 && (
-                  <ProfessionalInfoStep
-                    data={formData.professionalInfo || {}}
-                    errors={errors}
-                    onChange={updateProfessionalInfo}
-                  />
-                )}
-              </Box>
-
-              {/* Error Display */}
-              {submitError && (
-                <Box sx={{ marginTop: theme.spacing(2) }}>
-                  <Alert severity="error" sx={{ borderRadius: '8px' }}>
-                    {submitError}
-                  </Alert>
-                </Box>
-              )}
-
-              {/* Form Navigation Button - Only Next/Finish */}
-              <Box
-                sx={{
+                  padding: theme.spacing(4),
                   display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
-                  marginTop: 'auto',
-                  paddingTop: theme.spacing(4),
+                  flexDirection: 'column',
+                  minHeight: '500px',
                 }}
               >
-                <Button
-                  variant="contained"
-                  onClick={handleNext}
-                  disabled={isSubmitting}
+                {/* Mobile Step Title */}
+                <Typography
+                  variant="h5"
                   sx={{
-                    backgroundColor: theme.palette.primary.main,
-                    color: '#ffffff',
                     fontWeight: 500,
-                    padding: theme.spacing(1.5, 3),
-                    borderRadius: '8px',
-                    textTransform: 'none',
-                    '&:hover': {
-                      backgroundColor: theme.palette.primary.dark,
-                    },
-                    '&:disabled': {
-                      backgroundColor: theme.palette.grey[400],
-                      color: theme.palette.grey[600],
-                    },
+                    color: theme.palette.text.primary,
+                    marginBottom: theme.spacing(3),
+                    fontSize: '1.5rem',
                   }}
                 >
-                  {isSubmitting
-                    ? 'Enviando...'
-                    : currentStep === 2
-                      ? editingEmployee
-                        ? 'Atualizar'
-                        : 'Concluir'
-                      : 'Próximo'}
-                </Button>
+                  {stepTitles[currentStep - 1]}
+                </Typography>
+
+                {/* Form Content Area */}
+                <Box
+                  sx={{
+                    marginBottom: theme.spacing(4),
+                  }}
+                >
+                  {currentStep === 1 && (
+                    <PersonalInfoStep
+                      data={formData.personalInfo || {}}
+                      errors={errors}
+                      onChange={updatePersonalInfo}
+                    />
+                  )}
+
+                  {currentStep === 2 && (
+                    <ProfessionalInfoStep
+                      data={formData.professionalInfo || {}}
+                      errors={errors}
+                      onChange={updateProfessionalInfo}
+                    />
+                  )}
+                </Box>
+
+                {/* Error Display */}
+                {submitError && (
+                  <Box sx={{ marginTop: theme.spacing(2) }}>
+                    <Alert severity="error" sx={{ borderRadius: '8px' }}>
+                      {submitError}
+                    </Alert>
+                  </Box>
+                )}
+
+                {/* Mobile Navigation Buttons */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: 'auto',
+                    paddingTop: theme.spacing(4),
+                  }}
+                >
+                  <Button
+                    variant="text"
+                    onClick={handleBack}
+                    sx={{
+                      color: theme.palette.text.secondary,
+                      fontWeight: 500,
+                      textTransform: 'none',
+                      padding: theme.spacing(1.5, 3),
+                    }}
+                  >
+                    Voltar
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    onClick={handleNext}
+                    disabled={isSubmitting}
+                    sx={{
+                      backgroundColor: theme.palette.primary.main,
+                      color: '#ffffff',
+                      fontWeight: 500,
+                      padding: theme.spacing(1.5, 3),
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      '&:hover': {
+                        backgroundColor: theme.palette.primary.dark,
+                      },
+                      '&:disabled': {
+                        backgroundColor: theme.palette.grey[400],
+                        color: theme.palette.grey[600],
+                      },
+                    }}
+                  >
+                    {isSubmitting
+                      ? 'Enviando...'
+                      : currentStep === 2
+                        ? editingEmployee
+                          ? 'Atualizar'
+                          : 'Concluir'
+                        : 'Próximo'}
+                  </Button>
+                </Box>
               </Box>
-            </Box>
+            ) : (
+              /* Desktop Layout: Sidebar + Form Content */
+              <>
+                {/* Left Side - Vertical Steps */}
+                <Box
+                  sx={{
+                    padding: theme.spacing(4, 3),
+                    minWidth: '280px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <VerticalStepIndicator
+                    currentStep={currentStep}
+                    totalSteps={2}
+                    stepTitles={stepTitles}
+                  />
+
+                  {/* Voltar Button - Inside Left Sidebar */}
+                  <Button
+                    variant="text"
+                    onClick={handleBack}
+                    sx={{
+                      color: theme.palette.text.secondary,
+                      fontWeight: 500,
+                      textTransform: 'none',
+                      padding: theme.spacing(1.5, 3),
+                      marginTop: 'auto',
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    Voltar
+                  </Button>
+                </Box>
+
+                {/* Right Side - Form Content */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    padding: theme.spacing(4),
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minHeight: '500px',
+                  }}
+                >
+                  {/* Current Step Title */}
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 500,
+                      color: theme.palette.text.primary,
+                      marginBottom: theme.spacing(3),
+                      fontSize: '1.5rem',
+                    }}
+                  >
+                    {stepTitles[currentStep - 1]}
+                  </Typography>
+
+                  {/* Form Content Area */}
+                  <Box
+                    sx={{
+                      marginBottom: theme.spacing(4),
+                    }}
+                  >
+                    {currentStep === 1 && (
+                      <PersonalInfoStep
+                        data={formData.personalInfo || {}}
+                        errors={errors}
+                        onChange={updatePersonalInfo}
+                      />
+                    )}
+
+                    {currentStep === 2 && (
+                      <ProfessionalInfoStep
+                        data={formData.professionalInfo || {}}
+                        errors={errors}
+                        onChange={updateProfessionalInfo}
+                      />
+                    )}
+                  </Box>
+
+                  {/* Error Display */}
+                  {submitError && (
+                    <Box sx={{ marginTop: theme.spacing(2) }}>
+                      <Alert severity="error" sx={{ borderRadius: '8px' }}>
+                        {submitError}
+                      </Alert>
+                    </Box>
+                  )}
+
+                  {/* Form Navigation Button - Only Next/Finish */}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                      marginTop: 'auto',
+                      paddingTop: theme.spacing(4),
+                    }}
+                  >
+                    <Button
+                      variant="contained"
+                      onClick={handleNext}
+                      disabled={isSubmitting}
+                      sx={{
+                        backgroundColor: theme.palette.primary.main,
+                        color: '#ffffff',
+                        fontWeight: 500,
+                        padding: theme.spacing(1.5, 3),
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        '&:hover': {
+                          backgroundColor: theme.palette.primary.dark,
+                        },
+                        '&:disabled': {
+                          backgroundColor: theme.palette.grey[400],
+                          color: theme.palette.grey[600],
+                        },
+                      }}
+                    >
+                      {isSubmitting
+                        ? 'Enviando...'
+                        : currentStep === 2
+                          ? editingEmployee
+                            ? 'Atualizar'
+                            : 'Concluir'
+                          : 'Próximo'}
+                    </Button>
+                  </Box>
+                </Box>
+              </>
+            )}
           </Box>
         </Paper>
       </Box>
