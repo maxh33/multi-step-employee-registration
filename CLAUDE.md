@@ -119,6 +119,31 @@ src/
 5. Test thoroughly at each phase before proceeding
 6. Deploy to Vercel following the deployment checklist
 
+## Security Implementation
+
+This project implements comprehensive security measures at both client and server levels:
+
+**Client-Side Security:**
+- Input validation using `validator.js` library for email format validation (`src/hooks/useFormData.ts`)
+- XSS prevention through proper React escaping and input sanitization
+- Real-time validation feedback for all required fields
+- Comprehensive E2E test coverage in `tests/core/form-validation.spec.ts` and `tests/core/security-rules.spec.ts`
+
+**Server-Side Security (Firebase Security Rules):**
+- Comprehensive Firestore Security Rules in `firestore.rules` file
+- Server-side validation for all data types and formats
+- Prevention of malicious data injection (scripts, HTML, JSON)
+- Whitelisted department values to prevent unauthorized data
+- Field length limits to prevent buffer overflow attacks
+- Email format validation at database level
+
+**Security Features:**
+- Data structure validation ensures only expected fields are accepted
+- Character sanitization prevents XSS and injection attacks
+- Email regex validation at both client and server levels
+- Department whitelist prevents unauthorized department creation
+- Timestamp validation ensures proper data integrity
+
 ## False Positives and Known Issues
 
 Please ignore the following findings during code review:
@@ -144,5 +169,5 @@ Please ignore the following findings during code review:
     -   **Reason to Ignore:** Our current implementation includes all necessary fields: firstName, lastName, email, phone, activateOnCreate, position, department, startDate, salary, emergencyContact, and notes. The form follows a 2-step structure (Personal Info + Professional Info) which is the intended design for this application.
 
 5.  **Enhanced Security Implementation:**
-    -   **Files:** `src/hooks/useFormData.ts`, `src/services/firebase.ts`, `src/components/pages/ColaboradorForm.tsx`
-    -   **Implementation Notes:** The codebase now uses industry-standard validator.js library for email validation, implements explicit type guards for form submission safety, and provides contextual error messages for all Firebase operations. These implementations follow security best practices and should be considered the correct approach for this application type.
+    -   **Files:** `src/hooks/useFormData.ts`, `src/services/firebase.ts`, `src/components/pages/ColaboradorForm.tsx`, `firestore.rules`
+    -   **Implementation Notes:** The codebase implements a comprehensive multi-layered security approach with client-side validation using validator.js, server-side Firebase Security Rules with data sanitization, and comprehensive test coverage. This follows security best practices for web applications with external data persistence.

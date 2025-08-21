@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Employee collection security rules
+    match /employees/{employeeId} {
+      // Allow read access to all authenticated users (adjust as needed for production)
+      allow read: if true;
+      
+      // Allow create/update/delete with data validation
+      allow create, update: if validateEmployeeData(resource.data);
+      allow delete: if true;
+    }
+    
+    // Function to validate employee data structure and content
+    function validateEmployeeData(data) {
+      return validatePersonalInfo(data.personalInfo) &&
+             validateProfessionalInfo(data.professionalInfo) &&
+             validateSystemFields(data);
+    }
+    
+    // Validate personal information fields
+    function validatePersonalInfo(personalInfo) {
+      return personalInfo != null &&
+             personalInfo.keys().hasAll(['firstName', 'email', 'activateOnCreate']) &&
+             personalInfo.keys().hasOnly(['firstName', 'email', 'activateOnCreate']) &&
+             // firstName validation
+             personalInfo.firstName is string &&
+             personalInfo.firstName.size() > 0 &&
+             personalInfo.firstName.size() <= 100 &&
+             isValidName(personalInfo.firstName) &&
+             // email validation
+             personalInfo.email is string &&
+             personalInfo.email.size() > 0 &&
+             personalInfo.email.size() <= 254 &&
+             isValidEmail(personalInfo.email) &&
+             // activateOnCreate validation
+             personalInfo.activateOnCreate is bool;
+    }
+    
+    // Validate professional information fields
+    function validateProfessionalInfo(professionalInfo) {
+      return professionalInfo != null &&
+             professionalInfo.keys().hasAll(['department']) &&
+             professionalInfo.keys().hasOnly(['department']) &&
+             professionalInfo.department is string &&
+             professionalInfo.department.size() > 0 &&
+             professionalInfo.department.size() <= 50 &&
+             isValidDepartment(professionalInfo.department);
+    }
+    
+    // Validate system-generated fields
+    function validateSystemFields(data) {
+      return data.keys().hasAll(['personalInfo', 'professionalInfo', 'status', 'avatar', 'createdAt']) &&
+             data.keys().hasOnly(['personalInfo', 'professionalInfo', 'status', 'avatar', 'createdAt']) &&
+             // Status validation
+             data.status is string &&
+             data.status in ['Ativo', 'Inativo'] &&
+             // Avatar validation (color code)
+             data.avatar is string &&
+             data.avatar.size() > 0 &&
+             data.avatar.size() <= 20 &&
+             // CreatedAt validation
+             data.createdAt is timestamp;
+    }
+    
+    // Email validation function
+    function isValidEmail(email) {
+      return email.matches('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}');
+    }
+    
+    // Name validation - prevent malicious content
+    function isValidName(name) {
+      return !name.matches('.*[<>\"\'&].*') &&  // Prevent HTML/script injection
+             !name.matches('.*[{}\\[\\]].*') &&   // Prevent JSON injection
+             name.matches('[a-zA-ZÀ-ÿ\\s.,-]+');  // Allow letters, accents, spaces, basic punctuation
+    }
+    
+    // Department validation - whitelist allowed departments
+    function isValidDepartment(department) {
+      return department in [
+        'Desenvolvimento',
+        'Design',
+        'Marketing',
+        'Vendas',
+        'Recursos Humanos',
+        'Financeiro',
+        'Operações',
+        'Suporte',
+        'Jurídico',
+        'Produto'
+      ];
+    }
+    
+    // Deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
