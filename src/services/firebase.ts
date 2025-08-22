@@ -14,6 +14,7 @@ import {
   QueryDocumentSnapshot,
   DocumentData,
 } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { Employee, EmployeeFormData } from '../types/employee';
 
 // Firebase configuration from environment variables
@@ -29,6 +30,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 // Collection reference
 const employeesCollectionRef = collection(db, 'employees');
