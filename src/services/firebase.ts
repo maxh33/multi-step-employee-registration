@@ -160,3 +160,52 @@ export const deleteEmployee = async (id: string): Promise<void> => {
     throw handleFirebaseError(error, 'exclusão de colaborador');
   }
 };
+
+
+// Department-related employee operations (Phase 2C)
+export const updateEmployeeDepartment = async (
+  employeeId: string,
+  departmentId: string
+): Promise<void> => {
+  try {
+    const employeeRef = doc(db, 'employees', employeeId);
+    const employeeDoc = await getDoc(employeeRef);
+    
+    if (!employeeDoc.exists()) {
+      throw new Error('Employee not found');
+    }
+    
+    const currentData = employeeDoc.data();
+    
+    // Update the department in professional info
+    await updateDoc(employeeRef, {
+      'professionalInfo.department': departmentId,
+      'departmentId': departmentId, // Add department reference for Phase 2C
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error('Error updating employee department:', error);
+    throw error;
+  }
+};
+
+// Get employees by department
+export const getEmployeesByDepartment = async (
+  departmentId: string
+): Promise<Employee[]> => {
+  try {
+    const q = query(
+      employeesCollectionRef,
+      orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    
+    // Filter by department (until we have proper indexing)
+    return querySnapshot.docs
+      .map(convertDocToEmployee)
+      .filter(emp => emp.department === departmentId);
+  } catch (error) {
+    console.error('Error fetching employees by department:', error);
+    throw error;
+  }
+};

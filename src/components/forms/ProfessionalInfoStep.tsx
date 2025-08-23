@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -7,10 +7,14 @@ import {
   FormControl,
   FormHelperText,
   useTheme,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { SelectChangeEvent } from '@mui/material';
 import { ProfessionalInfo } from '../../types/employee';
+import { Department } from '../../types/department';
+import { getAllDepartments } from '../../services/departments';
 
 interface ProfessionalInfoStepProps {
   data: Partial<ProfessionalInfo>;
@@ -18,22 +22,34 @@ interface ProfessionalInfoStepProps {
   onChange: (data: Partial<ProfessionalInfo>) => void;
 }
 
-// Department options - these can be moved to a configuration file later
-const departmentOptions = [
-  { value: 'desenvolvimento', label: 'Desenvolvimento' },
-  { value: 'design', label: 'Design' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'vendas', label: 'Vendas' },
-  { value: 'rh', label: 'Recursos Humanos' },
-  { value: 'financeiro', label: 'Financeiro' },
-  { value: 'operacoes', label: 'Operações' },
-  { value: 'suporte', label: 'Suporte ao Cliente' },
-  { value: 'ti', label: 'TI' },
-  { value: 'produto', label: 'Produto' },
-];
-
 const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, errors, onChange }) => {
   const theme = useTheme();
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      setLoadingDepartments(true);
+      setDepartmentError(null);
+      const fetchedDepartments = await getAllDepartments();
+      setDepartments(fetchedDepartments);
+      
+      // If no departments exist, create default ones
+      if (fetchedDepartments.length === 0) {
+        setDepartmentError('Nenhum departamento cadastrado. Por favor, crie departamentos primeiro.');
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      setDepartmentError('Erro ao carregar departamentos');
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
 
   const handleFieldChange =
     (field: keyof ProfessionalInfo) => (event: SelectChangeEvent<string>) => {
@@ -49,95 +65,91 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: theme.spacing(3),
-        width: '100%',
-      }}
-    >
-      {/* Department Dropdown */}
-      <Box>
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: 500,
-            marginBottom: theme.spacing(1),
-            color: theme.palette.text.primary,
-            fontSize: '14px',
-          }}
-        >
-          Departamento
-        </Typography>
-        <FormControl fullWidth error={!!getFieldError('department')}>
-          <Select
-            value={data.department || ''}
-            onChange={handleFieldChange('department')}
-            displayEmpty
-            IconComponent={ExpandMoreIcon}
+    <Box>
+      <Typography variant="h5" component="h2" fontWeight={600} gutterBottom>
+        Informações Profissionais
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Adicione informações profissionais do colaborador
+      </Typography>
+
+      {departmentError && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {departmentError}
+        </Alert>
+      )}
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* Department Select */}
+        <Box>
+          <Typography
+            variant="body2"
             sx={{
-              borderRadius: '8px',
-              backgroundColor: '#ffffff',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.grey[300],
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.grey[400],
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.primary.main,
-                borderWidth: '2px',
-              },
-              '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.error.main,
-              },
-              '& .MuiSelect-select': {
-                padding: theme.spacing(1.5, 1.5),
-                fontSize: '14px',
-                color: data.department ? theme.palette.text.primary : theme.palette.text.secondary,
-              },
-              '& .MuiSelect-icon': {
-                color: theme.palette.grey[600],
-              },
+              mb: 1,
+              fontWeight: 500,
+              color: theme.palette.text.primary,
+              fontSize: '14px',
             }}
           >
-            <MenuItem
-              value=""
-              disabled
+            Departamento *
+          </Typography>
+          <FormControl fullWidth error={!!getFieldError('department')}>
+            <Select
+              value={data.department || ''}
+              onChange={handleFieldChange('department')}
+              displayEmpty
+              disabled={loadingDepartments || departments.length === 0}
+              IconComponent={ExpandMoreIcon}
               sx={{
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
+                backgroundColor: '#fff',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('department') ? theme.palette.error.main : '#e0e0e0',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('department') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('department') ? theme.palette.error.main : theme.palette.primary.main,
+                },
               }}
             >
-              Selecione um departamento
-            </MenuItem>
-            {departmentOptions.map((option) => (
-              <MenuItem
-                key={option.value}
-                value={option.value}
-                sx={{
-                  fontSize: '14px',
-                  color: theme.palette.text.primary,
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover,
-                  },
-                  '&.Mui-selected': {
-                    backgroundColor: theme.palette.primary.light,
-                    '&:hover': {
-                      backgroundColor: theme.palette.primary.light,
-                    },
-                  },
-                }}
-              >
-                {option.label}
-              </MenuItem>
-            ))}
-          </Select>
-          {getFieldError('department') && (
-            <FormHelperText sx={{ marginLeft: 0 }}>{getFieldError('department')}</FormHelperText>
-          )}
-        </FormControl>
+              {loadingDepartments ? (
+                <MenuItem disabled>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={20} />
+                    <Typography>Carregando departamentos...</Typography>
+                  </Box>
+                </MenuItem>
+              ) : departments.length === 0 ? (
+                <MenuItem disabled value="">
+                  <em>Nenhum departamento disponível</em>
+                </MenuItem>
+              ) : (
+                <>
+                  <MenuItem value="">
+                    <em>Selecione um departamento</em>
+                  </MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </MenuItem>
+                  ))}
+                </>
+              )}
+            </Select>
+            {getFieldError('department') && (
+              <FormHelperText>{getFieldError('department')}</FormHelperText>
+            )}
+          </FormControl>
+        </Box>
+
+        {/* Note about future fields */}
+        <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            <strong>Nota:</strong> Em breve, novos campos serão adicionados aqui incluindo cargo, 
+            data de admissão, nível hierárquico, responsável e salário base.
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ColaboradoresHome from './components/pages/ColaboradoresHome';
 import ColaboradorForm from './components/pages/ColaboradorForm';
+import DepartmentHome from './components/pages/DepartmentHome';
 import { Employee, EmployeeFormData } from './types/employee';
 import {
   createEmployee,
@@ -119,6 +120,12 @@ function DashboardApp() {
               onSubmit={handleFormSubmit}
               editingEmployee={editingEmployee}
             />
+          }
+        />
+        <Route
+          path="/departamentos"
+          element={
+            <DepartmentHome onNavigateToEmployees={() => navigate('/colaboradores')} />
           }
         />
         <Route path="/" element={<Navigate to="/colaboradores" replace />} />

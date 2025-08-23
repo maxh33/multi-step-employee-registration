@@ -11,7 +11,9 @@ import {
   Drawer,
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
+import BusinessIcon from '@mui/icons-material/Business';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface SidebarProps {
   width: number;
@@ -29,15 +31,27 @@ const Sidebar: React.FC<SidebarProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const menuItems = [
     {
       id: 'colaboradores',
       label: 'Colaboradores',
       icon: <PeopleIcon />,
-      active: true,
+      path: '/colaboradores',
+    },
+    {
+      id: 'departamentos',
+      label: 'Departamentos',
+      icon: <BusinessIcon />,
+      path: '/departamentos',
     },
   ];
+
+  const isActive = (path: string) => {
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <Drawer
@@ -113,51 +127,54 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Menu */}
         <List sx={{ padding: 0, flexGrow: 1 }}>
-          {menuItems.map((item) => (
-            <ListItem key={item.id} disablePadding>
-              <ListItemButton
-                onClick={() => {
-                  if (item.id === 'colaboradores' && onNavigateHome) {
-                    onNavigateHome();
-                  }
-                }}
-                sx={{
-                  padding: theme.spacing(1.5, 3),
-                  backgroundColor: item.active ? 'rgba(0, 200, 81, 0.1)' : 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                  },
-                  borderRadius: 0,
-                  cursor: 'pointer',
-                }}
-              >
-                <ListItemIcon
+          {menuItems.map((item) => {
+            const active = isActive(item.path);
+            return (
+              <ListItem key={item.id} disablePadding>
+                <ListItemButton
+                  onClick={() => {
+                    navigate(item.path);
+                    if (onClose) onClose();
+                  }}
                   sx={{
-                    color: item.active ? theme.palette.primary.main : '#6c757d',
-                    minWidth: '32px',
-                    marginRight: theme.spacing(1),
+                    padding: theme.spacing(1.5, 3),
+                    backgroundColor: active ? 'rgba(0, 200, 81, 0.1)' : 'transparent',
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    },
+                    borderRadius: 0,
+                    cursor: 'pointer',
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontSize: '14px',
-                    fontWeight: item.active ? 500 : 400,
-                    color: item.active ? '#212529' : '#6c757d',
-                  }}
-                />
-                <ChevronRightIcon
-                  sx={{
-                    color: '#6c757d',
-                    opacity: 0.7,
-                    fontSize: '16px',
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
+                  <ListItemIcon
+                    sx={{
+                      color: active ? theme.palette.primary.main : '#6c757d',
+                      minWidth: '32px',
+                      marginRight: theme.spacing(1),
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      fontSize: '14px',
+                      fontWeight: active ? 500 : 400,
+                      color: active ? '#212529' : '#6c757d',
+                    }}
+                  />
+                  {active && (
+                    <ChevronRightIcon
+                      sx={{
+                        fontSize: '18px',
+                        color: theme.palette.primary.main,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
         </List>
       </Box>
     </Drawer>
