@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Employee collection security rules
+    match /employees/{employeeId} {
+      // Require authentication for all operations
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && validateEmployeeData(resource.data);
+      allow delete: if isAuthenticated();
+    }
+    
+    // Department collection security rules (for Phase 2C)
+    match /departments/{departmentId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && validateDepartmentData(resource.data);
+      allow delete: if isAuthenticated();
+    }
+    
+    // Function to validate employee data structure and content
+    function validateEmployeeData(data) {
+      return validatePersonalInfo(data.personalInfo) &&
+             validateProfessionalInfo(data.professionalInfo) &&
+             validateSystemFields(data);
+    }
+    
+    // Function to validate department data (for Phase 2C)
+    function validateDepartmentData(data) {
+      return data.keys().hasAll(['name', 'responsibleManagerId', 'employeeIds']) &&
+             data.name is string &&
+             data.name.size() > 0 &&
+             data.name.size() <= 100 &&
+             data.responsibleManagerId is string &&
+             data.employeeIds is list;
+    }
