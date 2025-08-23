@@ -111,17 +111,35 @@ export const getDepartmentByName = async (
   }
 };
 
-// Get all active departments
-export const getAllDepartments = async (): Promise<Department[]> => {
+// Get all active departments with retry logic
+export const getAllDepartments = async (retryCount = 0): Promise<Department[]> => {
+  const maxRetries = 3;
+  
   try {
     const q = query(
       collection(db, 'departments'),
-      where('isActive', '==', true),
-      orderBy('name', 'asc')
+      where('isActive', '==', true)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(convertDocToDepartment);
-  } catch (error) {
+    const departments = querySnapshot.docs.map(convertDocToDepartment);
+    
+    // Sort client-side to avoid requiring composite index
+    return departments.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error: any) {
+    console.error(`Department listing attempt ${retryCount + 1} failed:`, error);
+    
+    // Retry on network errors or if retries remaining
+    if (retryCount < maxRetries && (
+      error?.code === 'unavailable' || 
+      error?.message?.includes('network') ||
+      error?.message?.includes('UNAVAILABLE') ||
+      error?.message?.includes('Failed to get document')
+    )) {
+      console.log(`Retrying department fetch (attempt ${retryCount + 2}/${maxRetries + 1})...`);
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000)); // Exponential backoff
+      return getAllDepartments(retryCount + 1);
+    }
+    
     throw handleDepartmentError(error, 'listing');
   }
 };

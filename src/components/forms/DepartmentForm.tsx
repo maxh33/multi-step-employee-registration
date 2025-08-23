@@ -29,7 +29,7 @@ interface DepartmentFormProps {
   mode: 'create' | 'edit';
   department?: Department | null;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (isEdit: boolean, departmentName: string) => void;
 }
 
 const DepartmentForm: React.FC<DepartmentFormProps> = ({
@@ -130,7 +130,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
         });
       }
       
-      onSubmit();
+      onSubmit(mode === 'edit', formData.name.trim());
     } catch (error: any) {
       setSubmitError(error.message || 'Erro ao salvar departamento');
     } finally {

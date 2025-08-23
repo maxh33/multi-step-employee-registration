@@ -9,6 +9,7 @@ import {
   useTheme,
   CircularProgress,
   Alert,
+  Button,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { SelectChangeEvent } from '@mui/material';
@@ -30,7 +31,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
 
   useEffect(() => {
     fetchDepartments();
-  }, []);
+  }, [data.department]); // Re-validate when department value changes
 
   const fetchDepartments = async () => {
     try {
@@ -39,13 +40,39 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
       const fetchedDepartments = await getAllDepartments();
       setDepartments(fetchedDepartments);
       
-      // If no departments exist, create default ones
+      // Validate current department value against fetched departments
+      if (data.department && fetchedDepartments.length > 0) {
+        const validDepartment = fetchedDepartments.find(dept => 
+          dept.name === data.department || 
+          (data.department && dept.name.toLowerCase() === data.department.toLowerCase()) ||
+          dept.id === data.department
+        );
+        
+        // If current department value is invalid, reset to empty
+        if (!validDepartment) {
+          console.warn(`Invalid department value "${data.department}" found, resetting to empty`);
+          onChange({ ...data, department: '' });
+        }
+      }
+      
+      // If no departments exist, show error
       if (fetchedDepartments.length === 0) {
         setDepartmentError('Nenhum departamento cadastrado. Por favor, crie departamentos primeiro.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching departments:', error);
-      setDepartmentError('Erro ao carregar departamentos');
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'Erro ao carregar departamentos';
+      if (error?.message?.includes('network') || error?.message?.includes('Failed to fetch')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+      } else if (error?.message?.includes('permission-denied')) {
+        errorMessage = 'Sem permissão para acessar departamentos.';
+      } else if (error?.message?.includes('index')) {
+        errorMessage = 'Configuração do banco de dados em andamento. Tente novamente em alguns instantes.';
+      }
+      
+      setDepartmentError(errorMessage);
     } finally {
       setLoadingDepartments(false);
     }
@@ -118,6 +145,19 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CircularProgress size={20} />
                     <Typography>Carregando departamentos...</Typography>
+                  </Box>
+                </MenuItem>
+              ) : departmentError ? (
+                <MenuItem disabled value="">
+                  <Box sx={{ color: 'error.main' }}>
+                    <Typography variant="body2">{departmentError}</Typography>
+                    <Button
+                      size="small"
+                      onClick={() => fetchDepartments()}
+                      sx={{ mt: 1, textTransform: 'none' }}
+                    >
+                      Tentar novamente
+                    </Button>
                   </Box>
                 </MenuItem>
               ) : departments.length === 0 ? (

@@ -1,14 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   IconButton,
   Checkbox,
@@ -25,6 +19,8 @@ import {
   MoreVert as MoreVertIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
   Search as SearchIcon,
   People as PeopleIcon,
   Person as PersonIcon,
@@ -34,6 +30,8 @@ import { Department } from '../../types/department';
 import { getAllDepartments, deleteDepartment } from '../../services/departments';
 import DepartmentForm from '../forms/DepartmentForm';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import Toast from '../ui/Toast';
+import { useToast } from '../../hooks/useToast';
 
 interface DepartmentHomeProps {
   onNavigateToEmployees?: () => void;
@@ -46,12 +44,23 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
   const [error, setError] = useState<string | null>(null);
   const [selectedDepartments, setSelectedDepartments] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [currentDepartment, setCurrentDepartment] = useState<Department | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
+  
+  // Hover actions state (matching employee pattern)
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [actionsMenuDepartmentId, setActionsMenuDepartmentId] = useState<string | null>(null);
+  
+  // Sorting state (matching employee pattern)
+  const [sortField, setSortField] = useState<keyof Department | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // Toast notifications
+  const [toast, toastActions] = useToast();
 
   // Fetch departments on mount
   useEffect(() => {
@@ -72,39 +81,102 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
     }
   };
 
-  // Filter departments based on search
-  const filteredDepartments = departments.filter(dept =>
-    dept.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and sort departments (matching employee pattern)
+  const filteredAndSortedDepartments = useMemo(() => {
+    let filtered = departments.filter(dept =>
+      dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (dept.responsibleManagerId && dept.responsibleManagerId.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
-  // Handlers
+    if (!sortField) return filtered;
+
+    return [...filtered].sort((a, b) => {
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
+
+      // Handle special sorting cases
+      if (sortField === 'name') {
+        aValue = a.name;
+        bValue = b.name;
+      } else if (sortField === 'employeeIds') {
+        aValue = a.employeeIds.length;
+        bValue = b.employeeIds.length;
+        
+        // For numeric sorting
+        if (sortDirection === 'asc') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      }
+
+      const aStr = String(aValue || '').toLowerCase();
+      const bStr = String(bValue || '').toLowerCase();
+
+      if (sortDirection === 'asc') {
+        return aStr.localeCompare(bStr);
+      } else {
+        return bStr.localeCompare(aStr);
+      }
+    });
+  }, [departments, searchTerm, sortField, sortDirection]);
+
+  // Sorting handlers (matching employee pattern)
+  const handleSort = (field: keyof Department) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIndicator = (field: keyof Department) => {
+    if (sortField !== field) return '↕';
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
+
+  // Selection handlers
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const allIds = new Set(filteredDepartments.map(d => d.id));
+      const allIds = new Set(filteredAndSortedDepartments.map(d => d.id));
       setSelectedDepartments(allIds);
     } else {
       setSelectedDepartments(new Set());
     }
   };
 
-  const handleSelectDepartment = (id: string) => {
+  const handleCheckboxChange = (departmentId: string, checked: boolean) => {
     const newSelected = new Set(selectedDepartments);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
+    if (checked) {
+      newSelected.add(departmentId);
     } else {
-      newSelected.add(id);
+      newSelected.delete(departmentId);
     }
     setSelectedDepartments(newSelected);
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, dept: Department) => {
-    setAnchorEl(event.currentTarget);
-    setCurrentDepartment(dept);
+  // Actions menu handlers (matching employee pattern)
+  const handleActionsMenuClick = (event: React.MouseEvent<HTMLElement>, departmentId: string) => {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + 8,
+      left: rect.left,
+    });
+    setActionsMenuDepartmentId(departmentId);
   };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setCurrentDepartment(null);
+  const handleActionsMenuClose = () => {
+    setMenuPosition(null);
+    setActionsMenuDepartmentId(null);
+  };
+
+  const handleRowClick = (department: Department) => {
+    if (!isDeleteMode) {
+      setEditingDepartment(department);
+      setFormOpen(true);
+    }
   };
 
   const handleCreateNew = () => {
@@ -113,19 +185,42 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
   };
 
   const handleEdit = () => {
-    if (currentDepartment) {
-      setEditingDepartment(currentDepartment);
-      setFormOpen(true);
+    if (actionsMenuDepartmentId) {
+      const department = departments.find(dept => dept.id === actionsMenuDepartmentId);
+      if (department) {
+        setEditingDepartment(department);
+        setFormOpen(true);
+      }
     }
-    handleMenuClose();
+    handleActionsMenuClose();
   };
 
-  const handleDeleteClick = () => {
-    if (currentDepartment) {
-      setDepartmentToDelete(currentDepartment);
-      setDeleteDialogOpen(true);
+  const handleDelete = () => {
+    setIsDeleteMode(true);
+    if (actionsMenuDepartmentId) {
+      setSelectedDepartments(new Set([actionsMenuDepartmentId]));
     }
-    handleMenuClose();
+    handleActionsMenuClose();
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteMode(false);
+    setSelectedDepartments(new Set());
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedDepartments.size > 0) {
+      try {
+        for (const id of Array.from(selectedDepartments)) {
+          await deleteDepartment(id);
+        }
+        await fetchDepartments();
+        setSelectedDepartments(new Set());
+        setIsDeleteMode(false);
+      } catch (err: any) {
+        setError(err.message || 'Erro ao excluir departamentos');
+      }
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -141,18 +236,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
     }
   };
 
-  const handleBulkDelete = async () => {
-    try {
-      const idsToDelete = Array.from(selectedDepartments);
-      for (const id of idsToDelete) {
-        await deleteDepartment(id);
-      }
-      await fetchDepartments();
-      setSelectedDepartments(new Set());
-    } catch (err: any) {
-      setError(err.message || 'Erro ao excluir departamentos');
-    }
-  };
+  // Remove old handleBulkDelete as it's now handled by handleConfirmDelete
 
   const handleFormClose = () => {
     setFormOpen(false);
@@ -189,10 +273,10 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
         </Button>
       </Box>
 
-      {/* Search and Actions Bar */}
+      {/* Search Bar */}
       <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
         <TextField
-          placeholder="Buscar departamento..."
+          placeholder="Buscar departamento ou responsável..."
           variant="outlined"
           size="small"
           value={searchTerm}
@@ -206,16 +290,6 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
             ),
           }}
         />
-        {selectedDepartments.size > 0 && (
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={handleBulkDelete}
-            startIcon={<DeleteIcon />}
-          >
-            Excluir Selecionados ({selectedDepartments.size})
-          </Button>
-        )}
       </Box>
 
       {/* Error Alert */}
@@ -225,108 +299,345 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
         </Alert>
       )}
 
-      {/* Departments Table */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox
-                  indeterminate={
-                    selectedDepartments.size > 0 && 
-                    selectedDepartments.size < filteredDepartments.length
-                  }
-                  checked={
-                    filteredDepartments.length > 0 && 
-                    selectedDepartments.size === filteredDepartments.length
-                  }
-                  onChange={handleSelectAll}
-                />
-              </TableCell>
-              <TableCell>Nome</TableCell>
-              <TableCell>Responsável</TableCell>
-              <TableCell align="center">Colaboradores</TableCell>
-              <TableCell>Criado em</TableCell>
-              <TableCell align="right">Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredDepartments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
-                    {searchTerm ? 'Nenhum departamento encontrado' : 'Nenhum departamento cadastrado'}
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredDepartments.map((dept) => (
-                <TableRow
-                  key={dept.id}
-                  hover
-                  selected={selectedDepartments.has(dept.id)}
-                >
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      checked={selectedDepartments.has(dept.id)}
-                      onChange={() => handleSelectDepartment(dept.id)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={500}>
-                      {dept.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      icon={<PersonIcon />}
-                      label={dept.responsibleManagerId || 'Não definido'}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip
-                      icon={<PeopleIcon />}
-                      label={dept.employeeIds.length}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(dept.createdAt).toLocaleDateString('pt-BR')}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleMenuOpen(e, dept)}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
+      {/* Sticky Table Header */}
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          backgroundColor: theme.palette.background.default,
+        }}
       >
-        <MenuItem onClick={handleEdit}>
-          <EditIcon fontSize="small" sx={{ mr: 1 }} />
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: '12px 12px 0 0',
+            border: `1px solid ${theme.palette.grey[200]}`,
+            borderBottom: 'none',
+          }}
+        >
+          {/* Table Headers */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: isDeleteMode 
+                ? '40px 2fr 1.5fr 100px 150px 80px' 
+                : '2fr 1.5fr 100px 150px',
+              gap: theme.spacing(2),
+              padding: theme.spacing(2, 3),
+              backgroundColor: '#f4f6f8',
+              borderBottom: `1px solid ${theme.palette.grey[200]}`,
+              transition: 'grid-template-columns 0.3s ease',
+            }}
+          >
+            {/* Checkbox column header - only in delete mode */}
+            {isDeleteMode && (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                {/* Empty space for checkbox column */}
+              </Box>
+            )}
+
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('name')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Nome {getSortIndicator('name')}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+              }}
+            >
+              Responsável
+            </Typography>
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('employeeIds')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                textAlign: 'center',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Colaboradores {getSortIndicator('employeeIds')}
+            </Typography>
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('createdAt')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Criado em {getSortIndicator('createdAt')}
+            </Typography>
+
+            {/* Actions column header - only in delete mode */}
+            {isDeleteMode && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: theme.spacing(0.5),
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={handleConfirmDelete}
+                  disabled={selectedDepartments.size === 0}
+                  sx={{
+                    color: '#C62828',
+                    '&:hover': {
+                      backgroundColor: 'rgba(198, 40, 40, 0.1)',
+                    },
+                    '&:disabled': {
+                      color: theme.palette.grey[400],
+                    },
+                  }}
+                >
+                  <CheckIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={handleCancelDelete}
+                  sx={{
+                    color: '#2E7D32',
+                    '&:hover': {
+                      backgroundColor: 'rgba(46, 125, 50, 0.1)',
+                    },
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+          </Box>
+        </Paper>
+      </Box>
+
+      {/* Scrollable Table Body */}
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: '0 0 12px 12px',
+          border: `1px solid ${theme.palette.grey[200]}`,
+          borderTop: 'none',
+          maxHeight: '70vh',
+          overflow: 'auto',
+        }}
+      >
+        {/* Department List or Empty State */}
+        {filteredAndSortedDepartments.length === 0 ? (
+          <Box
+            sx={{
+              padding: theme.spacing(8, 3),
+              textAlign: 'center',
+              color: theme.palette.text.secondary,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                marginBottom: theme.spacing(2),
+                color: theme.palette.text.secondary,
+                fontWeight: 500,
+              }}
+            >
+              {searchTerm ? 'Nenhum departamento encontrado' : 'Nenhum departamento cadastrado'}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                marginBottom: theme.spacing(3),
+                color: theme.palette.text.secondary,
+              }}
+            >
+              {searchTerm ? 'Tente ajustar sua busca' : 'Comece criando seu primeiro departamento'}
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={handleCreateNew}
+              sx={{
+                borderColor: theme.palette.primary.main,
+                color: theme.palette.primary.main,
+                fontWeight: 500,
+                padding: theme.spacing(1.5, 3),
+                borderRadius: '8px',
+                textTransform: 'none',
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.main,
+                  color: '#ffffff',
+                },
+              }}
+            >
+              Criar Departamento
+            </Button>
+          </Box>
+        ) : (
+          // Department Rows
+          <>
+            {filteredAndSortedDepartments.map((dept, index) => (
+              <Box
+                key={dept.id}
+                onMouseEnter={() => setHoveredRowId(dept.id)}
+                onMouseLeave={() => setHoveredRowId(null)}
+                onClick={() => handleRowClick(dept)}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: isDeleteMode
+                    ? '40px 2fr 1.5fr 100px 150px 80px'
+                    : '2fr 1.5fr 100px 150px',
+                  gap: theme.spacing(2),
+                  padding: theme.spacing(2, 3),
+                  alignItems: 'center',
+                  position: 'relative',
+                  borderBottom:
+                    index < filteredAndSortedDepartments.length - 1
+                      ? `1px solid ${theme.palette.grey[200]}`
+                      : 'none',
+                  cursor: isDeleteMode ? 'default' : 'pointer',
+                  transition: 'grid-template-columns 0.3s ease, background-color 0.2s ease',
+                  backgroundColor: 'transparent',
+                  opacity: 1,
+                  '&:hover': {
+                    backgroundColor: theme.palette.grey[50],
+                  },
+                }}
+              >
+                {/* Checkbox Column - only in delete mode */}
+                {isDeleteMode && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Checkbox
+                      size="small"
+                      checked={selectedDepartments.has(dept.id)}
+                      onChange={(e) => handleCheckboxChange(dept.id, e.target.checked)}
+                      sx={{
+                        '& .MuiSvgIcon-root': { fontSize: 20 },
+                      }}
+                    />
+                  </Box>
+                )}
+
+                {/* Nome Column */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: theme.palette.text.primary,
+                  }}
+                >
+                  {dept.name}
+                </Typography>
+
+                {/* Responsável Column */}
+                <Chip
+                  icon={<PersonIcon />}
+                  label={dept.responsibleManagerId || 'Não definido'}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    maxWidth: 'fit-content',
+                  }}
+                />
+
+                {/* Colaboradores Column */}
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Chip
+                    icon={<PeopleIcon />}
+                    label={dept.employeeIds.length}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                </Box>
+
+                {/* Criado em Column */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '14px',
+                    color: theme.palette.text.secondary,
+                  }}
+                >
+                  {new Date(dept.createdAt).toLocaleDateString('pt-BR')}
+                </Typography>
+
+                {/* Empty actions column - only in delete mode to match header grid */}
+                {isDeleteMode && <Box></Box>}
+
+                {/* 3-dot actions menu - positioned relative to entire row */}
+                <IconButton
+                  size="small"
+                  onClick={(e) => handleActionsMenuClick(e, dept.id)}
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    display: !isDeleteMode && hoveredRowId === dept.id ? 'block' : 'none',
+                    transition: 'opacity 0.2s ease',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: theme.palette.grey[100],
+                    },
+                  }}
+                >
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ))}
+          </>
+        )}
+      </Paper>
+
+      {/* Actions menu */}
+      <Menu
+        open={Boolean(menuPosition)}
+        onClose={handleActionsMenuClose}
+        anchorReference="anchorPosition"
+        anchorPosition={menuPosition || undefined}
+        sx={{
+          '& .MuiPaper-root': {
+            borderRadius: '8px',
+            boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
+          },
+        }}
+      >
+        <MenuItem onClick={handleEdit} sx={{ fontSize: '14px', gap: theme.spacing(1) }}>
+          <EditIcon fontSize="small" />
           Editar
         </MenuItem>
-        <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
-          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Excluir
+        <MenuItem onClick={handleDelete} sx={{ fontSize: '14px', gap: theme.spacing(1) }}>
+          <DeleteIcon fontSize="small" />
+          Remover
         </MenuItem>
       </Menu>
 
@@ -356,6 +667,14 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
           confirmColor={departmentToDelete.employeeIds.length > 0 ? "primary" : "error"}
         />
       )}
+
+      {/* Toast Notifications */}
+      <Toast
+        open={toast.open}
+        message={toast.message}
+        severity={toast.severity}
+        onClose={toastActions.hideToast}
+      />
     </Box>
   );
 };

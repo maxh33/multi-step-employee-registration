@@ -11,12 +11,15 @@ import {
   Menu,
   MenuItem,
   Checkbox,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import SearchIcon from '@mui/icons-material/Search';
 import { Employee } from '../../types/employee';
 
 interface ColaboradoresHomeProps {
@@ -43,15 +46,31 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
+  // Search and filtering state
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Actions menu state (3-dot menu for edit/delete)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [actionsMenuEmployeeId, setActionsMenuEmployeeId] = useState<string | null>(null);
 
-  // Sort employees based on current sort settings
-  const sortedEmployees = useMemo(() => {
-    if (!sortField) return employees;
+  // Filter and sort employees based on search and sort settings
+  const filteredAndSortedEmployees = useMemo(() => {
+    // First filter by search term
+    let filtered = employees;
+    
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase().trim();
+      filtered = employees.filter(emp => 
+        emp.firstName.toLowerCase().includes(search) ||
+        emp.email.toLowerCase().includes(search) ||
+        emp.department.toLowerCase().includes(search)
+      );
+    }
 
-    return [...employees].sort((a, b) => {
+    // Then sort
+    if (!sortField) return filtered;
+
+    return [...filtered].sort((a, b) => {
       let aValue = a[sortField];
       let bValue = b[sortField];
 
@@ -71,7 +90,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         return bStr.localeCompare(aStr);
       }
     });
-  }, [employees, sortField, sortDirection]);
+  }, [employees, searchTerm, sortField, sortDirection]);
 
   // Handle column header click for sorting
   const handleSort = (field: keyof Employee) => {
@@ -183,23 +202,41 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
           Colaboradores
         </Typography>
 
-        <Button
-          variant="contained"
-          onClick={onCreateNew}
-          sx={{
-            backgroundColor: theme.palette.primary.main,
-            color: '#ffffff',
-            fontWeight: 500,
-            padding: theme.spacing(1.5, 3),
-            borderRadius: '8px',
-            textTransform: 'none',
-            '&:hover': {
-              backgroundColor: theme.palette.primary.dark,
-            },
-          }}
-        >
-          Novo Colaborador
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField
+            placeholder="Buscar por nome, email ou departamento..."
+            variant="outlined"
+            size="small"
+            value={searchTerm}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+            sx={{ minWidth: 300 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="contained"
+            onClick={onCreateNew}
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              color: '#ffffff',
+              fontWeight: 500,
+              padding: theme.spacing(1.5, 3),
+              borderRadius: '8px',
+              textTransform: 'none',
+              whiteSpace: 'nowrap',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+              },
+            }}
+          >
+            Novo Colaborador
+          </Button>
+        </Box>
       </Box>
 
       {/* Sticky Table Header */}
@@ -359,7 +396,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         }}
       >
         {/* Employee List or Empty State */}
-        {sortedEmployees.length === 0 ? (
+        {filteredAndSortedEmployees.length === 0 ? (
           <Box
             sx={{
               padding: theme.spacing(8, 3),
@@ -375,7 +412,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 fontWeight: 500,
               }}
             >
-              Nenhum colaborador encontrado
+              {searchTerm ? 'Nenhum colaborador encontrado' : 'Nenhum colaborador cadastrado'}
             </Typography>
             <Typography
               variant="body2"
@@ -384,7 +421,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 color: theme.palette.text.secondary,
               }}
             >
-              Comece adicionando seu primeiro colaborador ao sistema
+              {searchTerm ? 'Tente ajustar sua busca ou limpar os filtros' : 'Comece adicionando seu primeiro colaborador ao sistema'}
             </Typography>
             <Button
               variant="outlined"
@@ -408,7 +445,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         ) : (
           // Employee Rows
           <>
-            {sortedEmployees.map((employee, index) => (
+            {filteredAndSortedEmployees.map((employee, index) => (
               <Box
                 key={employee.id}
                 onMouseEnter={() => setHoveredRowId(employee.id)}
@@ -424,7 +461,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                   alignItems: 'center',
                   position: 'relative',
                   borderBottom:
-                    index < sortedEmployees.length - 1
+                    index < filteredAndSortedEmployees.length - 1
                       ? `1px solid ${theme.palette.grey[200]}`
                       : 'none',
                   cursor: isDeleteMode ? 'default' : 'pointer',

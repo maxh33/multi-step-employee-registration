@@ -12,7 +12,7 @@ const initialFormData: Partial<EmployeeFormData> = {
     activateOnCreate: false,
   },
   professionalInfo: {
-    department: '',
+    department: '', // Ensure empty string default to avoid invalid values
   },
 };
 
