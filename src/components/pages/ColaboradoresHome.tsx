@@ -5,6 +5,7 @@ import {
   Button,
   Paper,
   useTheme,
+  useMediaQuery,
   Avatar,
   Chip,
   IconButton,
@@ -29,6 +30,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { Employee } from '../../types/employee';
 import { getAllDepartments } from '../../services/departments';
 import { getEmployeeName } from '../../services/firebase';
+import TruncatedText from '../ui/TruncatedText';
 
 interface ColaboradoresHomeProps {
   onCreateNew: () => void;
@@ -48,6 +50,39 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   onClearDepartmentFilter,
 }) => {
   const theme = useTheme();
+
+  // Responsive breakpoints
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'));
+
+  // Responsive grid column templates with correct 5-column structure
+  const getGridColumns = (isDeleteMode: boolean) => {
+    if (isMobile) {
+      // Mobile: 5 columns matching content structure
+      return isDeleteMode 
+        ? '40px 200px 180px 160px 140px 120px'  // With checkbox - 6 columns total
+        : '200px 180px 160px 140px 120px';      // Without checkbox - 5 columns total
+    } else if (isTablet) {
+      // Tablet: Show priority columns with flexible widths
+      return isDeleteMode 
+        ? '40px 1fr 1.2fr 1fr 0.8fr 100px' 
+        : '1fr 1.2fr 1fr 0.8fr 100px';
+    } else {
+      // Desktop: Original flexible spacing
+      return isDeleteMode 
+        ? '40px 1fr 1fr 1fr 1fr 120px' 
+        : '1fr 1fr 1fr 1fr 120px';
+    }
+  };
+
+  // Get minimum table width for horizontal scroll
+  const getMinTableWidth = (isDeleteMode: boolean) => {
+    if (isMobile) {
+      // Sum of corrected 5-column widths: 200+180+160+140+120 = 800px
+      return isDeleteMode ? '840px' : '800px';  // +40px for checkbox
+    }
+    return 'auto'; // Let CSS Grid handle on larger screens
+  };
 
   // Sorting state
   const [sortField, setSortField] = useState<keyof Employee | null>(null);
@@ -400,8 +435,10 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
       <Box
         sx={{
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: isMobile ? theme.spacing(2) : 0,
           marginBottom: theme.spacing(3),
         }}
       >
@@ -412,19 +449,28 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
             fontWeight: 600,
             color: theme.palette.text.primary,
             fontSize: '1.75rem',
+            marginRight: theme.spacing(3),
           }}
         >
           Colaboradores
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? theme.spacing(1.5) : theme.spacing(2), 
+          alignItems: isMobile ? 'stretch' : 'center' 
+        }}>
           <TextField
-            placeholder="Buscar por nome, email ou departamento..."
+            placeholder={isMobile ? "Buscar colaborador..." : "Buscar por nome, email ou departamento..."}
             variant="outlined"
             size="small"
             value={searchTerm}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-            sx={{ minWidth: 300 }}
+            sx={{ 
+              minWidth: isMobile ? 'auto' : isTablet ? 250 : 300,
+              width: isMobile ? '100%' : 'auto'
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -449,7 +495,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
               },
             }}
           >
-            Novo Colaborador
+            {isMobile ? 'Novo' : 'Novo Colaborador'}
           </Button>
         </Box>
       </Box>
@@ -513,35 +559,47 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         </Box>
       )}
 
-      {/* Sticky Table Header */}
+      {/* Unified Table Structure */}
       <Box
         sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          backgroundColor: theme.palette.background.default,
+          overflowX: isMobile ? 'auto' : 'visible',
+          '&::-webkit-scrollbar': {
+            height: 8,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#c1c1c1',
+            borderRadius: 4,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#f1f1f1',
+            borderRadius: 4,
+          },
         }}
       >
         <Paper
           elevation={0}
           sx={{
-            borderRadius: '12px 12px 0 0',
+            borderRadius: '12px',
             border: `1px solid ${theme.palette.grey[200]}`,
-            borderBottom: 'none',
+            overflow: 'hidden',
+            minWidth: getMinTableWidth(isDeleteMode),
+            width: 'fit-content',
           }}
         >
           {/* Table Headers */}
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: isDeleteMode 
-                ? '40px 1fr 1fr 1fr 1fr 120px' 
-                : '1fr 1fr 1fr 1fr 120px',
+              gridTemplateColumns: getGridColumns(isDeleteMode),
               gap: theme.spacing(2),
               padding: theme.spacing(2, 3),
+              alignItems: 'center',
               backgroundColor: '#f4f6f8',
               borderBottom: `1px solid ${theme.palette.grey[200]}`,
               transition: 'grid-template-columns 0.3s ease',
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
             }}
           >
             {/* Checkbox column header - only in delete mode */}
@@ -783,20 +841,14 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
               </Box>
             )}
           </Box>
-        </Paper>
-      </Box>
 
-      {/* Scrollable Table Body */}
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: '0 0 12px 12px',
-          border: `1px solid ${theme.palette.grey[200]}`,
-          borderTop: 'none',
-          maxHeight: '70vh',
-          overflow: 'auto',
-        }}
-      >
+          {/* Table Body */}
+          <Box
+            sx={{
+              maxHeight: '70vh',
+              overflow: 'auto',
+            }}
+          >
         {/* Employee List or Empty State */}
         {filteredAndSortedEmployees.length === 0 ? (
           <Box
@@ -855,9 +907,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 onClick={() => handleRowClick(employee)}
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: isDeleteMode
-                    ? '40px 1fr 1fr 1fr 1fr 120px'
-                    : '1fr 1fr 1fr 1fr 120px',
+                  gridTemplateColumns: getGridColumns(isDeleteMode),
                   gap: theme.spacing(2),
                   padding: theme.spacing(2, 3),
                   alignItems: 'center',
@@ -911,41 +961,44 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                     >
                       {employee.firstName.charAt(0).toUpperCase()}
                     </Avatar>
-                    <Typography
+                    <TruncatedText
+                      text={employee.firstName}
+                      maxLength={isMobile ? 12 : 20}
                       variant="body2"
                       sx={{
                         fontSize: '14px',
                         fontWeight: 500,
                         color: theme.palette.text.primary,
+                        maxWidth: isMobile ? '110px' : '160px',
                       }}
-                    >
-                      {employee.firstName}
-                    </Typography>
+                    />
                   </Box>
-                  <Typography
+                  <TruncatedText
+                    text={employee.email}
+                    maxLength={isMobile ? 20 : 30}
                     variant="body2"
                     sx={{
                       fontSize: '13px',
                       color: theme.palette.text.secondary,
                       ml: 5.5, // Align with the text above (avatar width + gap)
+                      maxWidth: isMobile ? '130px' : '150px',
                     }}
-                  >
-                    {employee.email}
-                  </Typography>
+                  />
                 </Box>
 
                 {/* Column 2: Organizational Context (Departamento / Data de Admissão) */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <Typography
+                  <TruncatedText
+                    text={getDepartmentName(employee.department)}
+                    maxLength={isMobile ? 15 : 25}
                     variant="body2"
                     sx={{
                       fontSize: '14px',
                       color: theme.palette.text.secondary,
                       fontWeight: 500,
+                      maxWidth: isMobile ? '100px' : '140px',
                     }}
-                  >
-                    {getDepartmentName(employee.department)}
-                  </Typography>
+                  />
                   <Typography
                     variant="body2"
                     sx={{
@@ -960,16 +1013,17 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
 
                 {/* Column 3: Professional Role (Cargo / Nível) */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <Typography
+                  <TruncatedText
+                    text={employee.position || 'N/A'}
+                    maxLength={isMobile ? 12 : 20}
                     variant="body2"
                     sx={{
                       fontSize: '14px',
                       color: theme.palette.text.secondary,
                       fontWeight: 500,
+                      maxWidth: isMobile ? '90px' : '120px',
                     }}
-                  >
-                    {employee.position || 'N/A'}
-                  </Typography>
+                  />
                   <Box>
                     {employee.hierarchicalLevel ? (
                       <Chip
@@ -1023,16 +1077,17 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                       borderRadius: '5px',
                     }}
                   />
-                  <Typography
+                  <TruncatedText
+                    text={employee.responsibleManager ? getManagerName(employee.responsibleManager) : 'N/A'}
+                    maxLength={isMobile ? 10 : 15}
                     variant="body2"
                     sx={{
                       fontSize: '13px',
                       color: theme.palette.text.secondary,
                       opacity: 0.8,
+                      maxWidth: isMobile ? '90px' : '110px',
                     }}
-                  >
-                    {employee.responsibleManager ? getManagerName(employee.responsibleManager) : 'N/A'}
-                  </Typography>
+                  />
                 </Box>
 
                 {/* Column 5: Compensation (Salário Base) */}
@@ -1099,7 +1154,9 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
             </Menu>
           </>
         )}
-      </Paper>
+        </Box>
+        </Paper>
+      </Box>
 
       {/* Enhanced Delete Confirmation Modal */}
       <Dialog

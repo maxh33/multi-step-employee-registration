@@ -13,6 +13,8 @@ import {
   InputAdornment,
   Alert,
   CircularProgress,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -25,7 +27,6 @@ import {
   People as PeopleIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
 import { Department } from '../../types/department';
 import { getAllDepartments, deleteDepartment } from '../../services/departments';
 import { getEmployeeName, getActiveEmployeeCountByDepartment } from '../../services/firebase';
@@ -33,6 +34,7 @@ import DepartmentForm from '../forms/DepartmentForm';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import Toast from '../ui/Toast';
 import { useToast } from '../../hooks/useToast';
+import TruncatedText from '../ui/TruncatedText';
 
 interface DepartmentHomeProps {
   onNavigateToEmployees?: (departmentFilter?: string) => void;
@@ -41,6 +43,34 @@ interface DepartmentHomeProps {
 
 const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, onNavigateToCreateManager }) => {
   const theme = useTheme();
+
+  // Responsive breakpoints
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'));
+
+  // Responsive grid column templates with correct 4-column structure
+  const getGridColumns = (isDeleteMode: boolean) => {
+    if (isMobile) {
+      // Mobile: 4 columns matching content structure
+      return isDeleteMode ? '40px 180px 150px 100px 120px' : '180px 150px 100px 120px';
+    } else if (isTablet) {
+      // Tablet: Optimized spacing
+      return isDeleteMode ? '40px 2fr 1fr 80px 120px' : '2fr 1fr 80px 120px';
+    } else {
+      // Desktop: Original spacing
+      return isDeleteMode ? '40px 2fr 1.5fr 100px 150px' : '2fr 1.5fr 100px 150px';
+    }
+  };
+
+  // Get minimum table width for horizontal scroll
+  const getDeptMinTableWidth = (isDeleteMode: boolean) => {
+    if (isMobile) {
+      // Sum of corrected 4-column widths: 180+150+100+120 = 550px
+      return isDeleteMode ? '590px' : '550px';  // +40px for checkbox
+    }
+    return 'auto'; // Let CSS Grid handle on larger screens
+  };
+
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -310,39 +340,81 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
   }
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1" fontWeight={600}>
+    <Box
+      sx={{
+        maxWidth: '1400px',
+        width: '100%',
+        padding: theme.spacing(3, 3, 3, 2),
+      }}
+    >
+      {/* Header Section */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: isMobile ? theme.spacing(2) : 0,
+          marginBottom: theme.spacing(3),
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          sx={{
+            fontWeight: 600,
+            color: theme.palette.text.primary,
+            fontSize: '1.75rem',
+            marginRight: theme.spacing(3),
+          }}
+        >
           Departamentos
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreateNew}
-          sx={{ textTransform: 'none' }}
-        >
-          Novo Departamento
-        </Button>
-      </Box>
 
-      {/* Search Bar */}
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-        <TextField
-          placeholder="Buscar departamento ou responsável..."
-          variant="outlined"
-          size="small"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ flexGrow: 1, maxWidth: 400 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? theme.spacing(1.5) : theme.spacing(2), 
+          alignItems: isMobile ? 'stretch' : 'center' 
+        }}>
+          <TextField
+            placeholder={isMobile ? "Buscar departamento..." : "Buscar departamento ou responsável..."}
+            variant="outlined"
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ 
+              minWidth: isMobile ? 'auto' : isTablet ? 250 : 300,
+              width: isMobile ? '100%' : 'auto'
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreateNew}
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              color: '#ffffff',
+              fontWeight: 500,
+              padding: theme.spacing(1.5, 3),
+              borderRadius: '8px',
+              textTransform: 'none',
+              whiteSpace: 'nowrap',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.dark,
+              },
+            }}
+          >
+            {isMobile ? 'Novo' : 'Novo Departamento'}
+          </Button>
+        </Box>
       </Box>
 
       {/* Error Alert */}
@@ -352,35 +424,47 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
         </Alert>
       )}
 
-      {/* Sticky Table Header */}
+      {/* Unified Departments Table Structure */}
       <Box
         sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          backgroundColor: theme.palette.background.default,
+          overflowX: isMobile ? 'auto' : 'visible',
+          '&::-webkit-scrollbar': {
+            height: 8,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#c1c1c1',
+            borderRadius: 4,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#f1f1f1',
+            borderRadius: 4,
+          },
         }}
       >
         <Paper
           elevation={0}
           sx={{
-            borderRadius: '12px 12px 0 0',
+            borderRadius: '12px',
             border: `1px solid ${theme.palette.grey[200]}`,
-            borderBottom: 'none',
+            overflow: 'hidden',
+            minWidth: getDeptMinTableWidth(isDeleteMode),
+            width: 'fit-content',
           }}
         >
           {/* Table Headers */}
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: isDeleteMode 
-                ? '40px 2fr 1.5fr 100px 150px 80px' 
-                : '2fr 1.5fr 100px 150px',
+              gridTemplateColumns: getGridColumns(isDeleteMode),
               gap: theme.spacing(2),
               padding: theme.spacing(2, 3),
+              alignItems: 'center',
               backgroundColor: '#f4f6f8',
               borderBottom: `1px solid ${theme.palette.grey[200]}`,
               transition: 'grid-template-columns 0.3s ease',
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
             }}
           >
             {/* Checkbox column header - only in delete mode */}
@@ -491,20 +575,14 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
               </Box>
             )}
           </Box>
-        </Paper>
-      </Box>
 
-      {/* Scrollable Table Body */}
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: '0 0 12px 12px',
-          border: `1px solid ${theme.palette.grey[200]}`,
-          borderTop: 'none',
-          maxHeight: '70vh',
-          overflow: 'auto',
-        }}
-      >
+          {/* Table Body */}
+          <Box
+            sx={{
+              maxHeight: '70vh',
+              overflow: 'auto',
+            }}
+          >
         {/* Department List or Empty State */}
         {filteredAndSortedDepartments.length === 0 ? (
           <Box
@@ -563,9 +641,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
                 onClick={() => handleRowClick(dept)}
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: isDeleteMode
-                    ? '40px 2fr 1.5fr 100px 150px 80px'
-                    : '2fr 1.5fr 100px 150px',
+                  gridTemplateColumns: getGridColumns(isDeleteMode),
                   gap: theme.spacing(2),
                   padding: theme.spacing(2, 3),
                   alignItems: 'center',
@@ -598,16 +674,17 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
                 )}
 
                 {/* Nome Column */}
-                <Typography
+                <TruncatedText
+                  text={dept.name}
+                  maxLength={isMobile ? 18 : 30}
                   variant="body2"
                   sx={{
                     fontSize: '14px',
                     fontWeight: 500,
                     color: theme.palette.text.primary,
+                    maxWidth: isMobile ? '140px' : '160px',
                   }}
-                >
-                  {dept.name}
-                </Typography>
+                />
 
                 {/* Responsável Column */}
                 <Chip
@@ -620,7 +697,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
                   size="small"
                   variant="outlined"
                   sx={{
-                    maxWidth: 'fit-content',
+                    maxWidth: isMobile ? '110px' : '130px',
                   }}
                 />
 
@@ -688,7 +765,9 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
             ))}
           </>
         )}
-      </Paper>
+        </Box>
+        </Paper>
+      </Box>
 
       {/* Actions menu */}
       <Menu
