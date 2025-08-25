@@ -11,6 +11,8 @@ import {
   getAllEmployees,
   deleteEmployee,
 } from './services/firebase';
+import { initializeDepartments } from './utils/departmentSeeder';
+import { syncDepartmentEmployeeCounts } from './services/firebase';
 
 function DashboardApp() {
   const navigate = useNavigate();
@@ -18,16 +20,25 @@ function DashboardApp() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const initializeApp = async () => {
       try {
+        // Initialize departments first (creates defaults if none exist)
+        await initializeDepartments();
+        
+        // Then fetch employees
         const fetchedEmployees = await getAllEmployees();
         setEmployees(fetchedEmployees);
       } catch (error) {
-        console.error('Error fetching employees:', error);
+        console.error('Error initializing app:', error);
       }
     };
 
-    fetchEmployees();
+    initializeApp();
+  }, []);
+
+  // Add sync function to global scope for manual data repair
+  React.useEffect(() => {
+    (window as any).repairDepartmentCounts = syncDepartmentEmployeeCounts;
   }, []);
   const handleCreateNew = () => {
     setEditingEmployee(null);

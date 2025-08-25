@@ -13,10 +13,15 @@ const initialFormData: Partial<EmployeeFormData> = {
   },
   professionalInfo: {
     department: '', // Ensure empty string default to avoid invalid values
+    position: '',
+    admissionDate: '',
+    hierarchicalLevel: 'junior' as const,
+    responsibleManager: '',
+    baseSalary: 0,
   },
 };
 
-// Basic validation rules - All 4 fields are required
+// Basic validation rules - All 8 fields are required (3 personal + 5 professional)
 const validateStep = (step: number, formData: Partial<EmployeeFormData>): ValidationResult => {
   const errors: Record<string, string> = {};
 
@@ -36,9 +41,27 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
   }
 
   if (step === 2) {
-    // Step 2: Professional Info validation (1 required field)
+    // Step 2: Professional Info validation (6 required fields)
     if (!formData.professionalInfo?.department?.trim()) {
       errors['professionalInfo.department'] = 'Departamento é obrigatório';
+    }
+    if (!formData.professionalInfo?.position?.trim()) {
+      errors['professionalInfo.position'] = 'Cargo é obrigatório';
+    }
+    if (!formData.professionalInfo?.admissionDate?.trim()) {
+      errors['professionalInfo.admissionDate'] = 'Data de admissão é obrigatória';
+    }
+    if (!formData.professionalInfo?.hierarchicalLevel) {
+      errors['professionalInfo.hierarchicalLevel'] = 'Nível hierárquico é obrigatório';
+    }
+    // Responsible manager is only required for non-manager levels
+    if (formData.professionalInfo?.hierarchicalLevel && 
+        formData.professionalInfo.hierarchicalLevel !== 'manager' &&
+        !formData.professionalInfo?.responsibleManager?.trim()) {
+      errors['professionalInfo.responsibleManager'] = 'Responsável é obrigatório para este nível';
+    }
+    if (!formData.professionalInfo?.baseSalary || formData.professionalInfo.baseSalary <= 0) {
+      errors['professionalInfo.baseSalary'] = 'Salário base deve ser maior que zero';
     }
   }
 
@@ -48,13 +71,20 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
   };
 };
 
-// Calculate progress based on filled fields - 4 required fields total
+// Calculate progress based on filled fields - 8 required fields total (3 personal + 5 professional)
 const calculateProgress = (formData: Partial<EmployeeFormData>): number => {
   const fields = [
+    // Personal Info (3 fields)
     formData.personalInfo?.firstName, // Required
     formData.personalInfo?.email, // Required
     formData.personalInfo?.activateOnCreate !== undefined ? 'set' : '', // Required (boolean)
+    
+    // Professional Info (5 fields - responsibleManager is conditional)
     formData.professionalInfo?.department, // Required
+    formData.professionalInfo?.position, // Required
+    formData.professionalInfo?.admissionDate, // Required
+    formData.professionalInfo?.hierarchicalLevel, // Required
+    formData.professionalInfo?.baseSalary && formData.professionalInfo.baseSalary > 0 ? 'set' : '', // Required (number > 0)
   ];
 
   const filledFields = fields.filter((field) =>

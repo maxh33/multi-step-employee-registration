@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,7 +20,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { Employee } from '../../types/employee';
+import { getAllDepartments } from '../../services/departments';
+import { getEmployeeName } from '../../services/firebase';
 
 interface ColaboradoresHomeProps {
   onCreateNew: () => void;
@@ -49,9 +53,95 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   // Search and filtering state
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Department names cache for ID-to-name resolution
+  const [departmentNames, setDepartmentNames] = useState<Record<string, string>>({});
+  
+  // Manager names cache for ID-to-name resolution
+  const [managerNames, setManagerNames] = useState<Record<string, string>>({});
+  
+  // Salary visibility toggle
+  const [showSalaries, setShowSalaries] = useState(false);
+
   // Actions menu state (3-dot menu for edit/delete)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [actionsMenuEmployeeId, setActionsMenuEmployeeId] = useState<string | null>(null);
+
+  // Fetch department names and manager names on component mount
+  useEffect(() => {
+    const fetchNames = async () => {
+      try {
+        // Fetch department names
+        const departments = await getAllDepartments();
+        const deptNamesMap: Record<string, string> = {};
+        departments.forEach(dept => {
+          deptNamesMap[dept.id] = dept.name;
+        });
+        setDepartmentNames(deptNamesMap);
+        
+        // Fetch manager names for employees that have managers
+        const managerNamesMap: Record<string, string> = {};
+        await Promise.all(
+          employees.map(async (employee) => {
+            if (employee.responsibleManager) {
+              try {
+                const managerName = await getEmployeeName(employee.responsibleManager);
+                if (managerName) {
+                  managerNamesMap[employee.responsibleManager] = managerName;
+                }
+              } catch (error) {
+                console.error(`Error fetching manager name for ${employee.responsibleManager}:`, error);
+              }
+            }
+          })
+        );
+        setManagerNames(managerNamesMap);
+      } catch (error) {
+        console.error('Error fetching names:', error);
+      }
+    };
+
+    fetchNames();
+  }, [employees]);
+
+  // Utility function to get department name from ID
+  const getDepartmentName = (departmentId: string): string => {
+    return departmentNames[departmentId] || departmentId || 'Não definido';
+  };
+
+  // Utility function to get manager name from ID
+  const getManagerName = (managerId: string): string => {
+    return managerNames[managerId] || 'Carregando...';
+  };
+
+  // Utility function to format salary
+  const formatSalary = (salary?: number): string => {
+    if (!salary) return 'N/A';
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(salary);
+  };
+
+  // Utility function to get hierarchical level badge color
+  const getHierarchicalLevelColor = (level?: string): string => {
+    switch (level) {
+      case 'junior': return '#E3F2FD';
+      case 'mid-level': return '#E8F5E8';
+      case 'senior': return '#FFF3E0';
+      case 'manager': return '#F3E5F5';
+      default: return '#F5F5F5';
+    }
+  };
+
+  const getHierarchicalLevelTextColor = (level?: string): string => {
+    switch (level) {
+      case 'junior': return '#1976D2';
+      case 'mid-level': return '#2E7D32';
+      case 'senior': return '#F57C00';
+      case 'manager': return '#7B1FA2';
+      default: return '#666';
+    }
+  };
 
   // Filter and sort employees based on search and sort settings
   const filteredAndSortedEmployees = useMemo(() => {
@@ -63,7 +153,10 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
       filtered = employees.filter(emp => 
         emp.firstName.toLowerCase().includes(search) ||
         emp.email.toLowerCase().includes(search) ||
-        emp.department.toLowerCase().includes(search)
+        getDepartmentName(emp.department).toLowerCase().includes(search) ||
+        (emp.position && emp.position.toLowerCase().includes(search)) ||
+        (emp.hierarchicalLevel && emp.hierarchicalLevel.toLowerCase().includes(search)) ||
+        (emp.responsibleManager && getManagerName(emp.responsibleManager).toLowerCase().includes(search))
       );
     }
 
@@ -90,7 +183,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         return bStr.localeCompare(aStr);
       }
     });
-  }, [employees, searchTerm, sortField, sortDirection]);
+  }, [employees, searchTerm, sortField, sortDirection, departmentNames, managerNames]);
 
   // Handle column header click for sorting
   const handleSort = (field: keyof Employee) => {
@@ -325,6 +418,83 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
             </Typography>
             <Typography
               variant="body2"
+              onClick={() => handleSort('position')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Cargo {getSortIndicator('position')}
+            </Typography>
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('hierarchicalLevel')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Nível {getSortIndicator('hierarchicalLevel')}
+            </Typography>
+            <Typography
+              variant="body2"
+              onClick={() => handleSort('responsibleManager')}
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '14px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  color: theme.palette.text.primary,
+                },
+              }}
+            >
+              Responsável {getSortIndicator('responsibleManager')}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('baseSalary')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                  },
+                }}
+              >
+                Salário Base {getSortIndicator('baseSalary')}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => setShowSalaries(!showSalaries)}
+                sx={{
+                  ml: 0.5,
+                  p: 0.5,
+                  color: theme.palette.text.secondary,
+                }}
+              >
+                {showSalaries ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+              </IconButton>
+            </Box>
+            <Typography
+              variant="body2"
               onClick={() => handleSort('status')}
               sx={{
                 fontWeight: 500,
@@ -542,7 +712,77 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                     color: theme.palette.text.secondary,
                   }}
                 >
-                  {employee.department}
+                  {getDepartmentName(employee.department)}
+                </Typography>
+
+                {/* Position Column */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '14px',
+                    color: theme.palette.text.secondary,
+                  }}
+                >
+                  {employee.position || 'N/A'}
+                </Typography>
+
+                {/* Hierarchical Level Column */}
+                {employee.hierarchicalLevel ? (
+                  <Chip
+                    label={
+                      employee.hierarchicalLevel === 'junior' ? 'Júnior' :
+                      employee.hierarchicalLevel === 'mid-level' ? 'Pleno' :
+                      employee.hierarchicalLevel === 'senior' ? 'Sênior' :
+                      employee.hierarchicalLevel === 'manager' ? 'Gerente' :
+                      employee.hierarchicalLevel
+                    }
+                    size="small"
+                    sx={{
+                      backgroundColor: getHierarchicalLevelColor(employee.hierarchicalLevel),
+                      color: getHierarchicalLevelTextColor(employee.hierarchicalLevel),
+                      fontWeight: 600,
+                      fontSize: '11px',
+                      height: '22px',
+                      minWidth: 'fit-content',
+                      width: 'fit-content',
+                      borderRadius: '4px',
+                    }}
+                  />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '14px',
+                      color: theme.palette.text.disabled,
+                    }}
+                  >
+                    N/A
+                  </Typography>
+                )}
+
+                {/* Responsible Manager Column */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '14px',
+                    color: theme.palette.text.secondary,
+                  }}
+                >
+                  {employee.responsibleManager ? getManagerName(employee.responsibleManager) : 'N/A'}
+                </Typography>
+
+                {/* Base Salary Column */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: '14px',
+                    color: theme.palette.text.secondary,
+                    fontWeight: 500,
+                    filter: showSalaries ? 'none' : 'blur(4px)',
+                    transition: 'filter 0.2s ease',
+                  }}
+                >
+                  {showSalaries ? formatSalary(employee.baseSalary) : 'R$ •••••'}
                 </Typography>
 
                 {/* Status Column */}

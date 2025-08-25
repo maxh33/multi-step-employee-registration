@@ -28,6 +28,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { Department } from '../../types/department';
 import { getAllDepartments, deleteDepartment } from '../../services/departments';
+import { getEmployeeName } from '../../services/firebase';
 import DepartmentForm from '../forms/DepartmentForm';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import Toast from '../ui/Toast';
@@ -42,6 +43,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [managerNames, setManagerNames] = useState<Record<string, string>>({});
   const [selectedDepartments, setSelectedDepartments] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -73,6 +75,24 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
       setError(null);
       const fetchedDepartments = await getAllDepartments();
       setDepartments(fetchedDepartments);
+      
+      // Fetch manager names for departments that have managers
+      const managerNamesMap: Record<string, string> = {};
+      await Promise.all(
+        fetchedDepartments.map(async (dept) => {
+          if (dept.responsibleManagerId && dept.responsibleManagerId !== 'system') {
+            try {
+              const managerName = await getEmployeeName(dept.responsibleManagerId);
+              if (managerName) {
+                managerNamesMap[dept.responsibleManagerId] = managerName;
+              }
+            } catch (error) {
+              console.error(`Error fetching manager name for ${dept.responsibleManagerId}:`, error);
+            }
+          }
+        })
+      );
+      setManagerNames(managerNamesMap);
     } catch (err) {
       setError('Erro ao carregar departamentos');
       console.error('Error fetching departments:', err);
@@ -559,7 +579,11 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
                 {/* Responsável Column */}
                 <Chip
                   icon={<PersonIcon />}
-                  label={dept.responsibleManagerId || 'Não definido'}
+                  label={
+                    dept.responsibleManagerId && dept.responsibleManagerId !== 'system' 
+                      ? (managerNames[dept.responsibleManagerId] || 'Carregando...')
+                      : 'Não definido'
+                  }
                   size="small"
                   variant="outlined"
                   sx={{

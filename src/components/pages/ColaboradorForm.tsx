@@ -52,6 +52,11 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
       },
       professionalInfo: {
         department: editingEmployee.department,
+        position: editingEmployee.position || '',
+        admissionDate: editingEmployee.admissionDate ? editingEmployee.admissionDate.toISOString().split('T')[0] : '',
+        hierarchicalLevel: editingEmployee.hierarchicalLevel || 'junior',
+        responsibleManager: editingEmployee.responsibleManager || '',
+        baseSalary: editingEmployee.baseSalary || 0,
       },
     };
   }, [editingEmployee]);
