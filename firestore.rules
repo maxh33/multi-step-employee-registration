@@ -11,7 +11,7 @@ service cloud.firestore {
     match /employees/{employeeId} {
       // Require authentication for all operations
       allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && validateEmployeeData(resource.data);
+      allow create, update: if isAuthenticated() && validateEmployeeData(request.resource.data);
       allow delete: if isAuthenticated();
     }
     
@@ -19,8 +19,8 @@ service cloud.firestore {
     match /departments/{departmentId} {
       // Require authentication for all operations
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && validateDepartmentData(resource.data);
-      allow update: if isAuthenticated() && validateDepartmentData(resource.data);
+      allow create: if isAuthenticated() && validateDepartmentData(request.resource.data);
+      allow update: if isAuthenticated() && validateDepartmentData(request.resource.data);
       allow delete: if isAuthenticated();
     }
     

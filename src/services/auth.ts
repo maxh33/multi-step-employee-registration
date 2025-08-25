@@ -7,14 +7,20 @@ export interface AuthError {
   userFriendlyMessage: string;
 }
 
+interface FirebaseError {
+  code: string;
+  message: string;
+  customData?: unknown;
+}
+
 export const authService = {
   // Sign in with email/password
   signIn: async (email: string, password: string): Promise<User> => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return userCredential.user;
-    } catch (error: any) {
-      throw handleAuthError(error);
+    } catch (error) {
+      throw handleAuthError(error as FirebaseError);
     }
   },
 
@@ -24,9 +30,13 @@ export const authService = {
       await signOut(auth);
       // Clear any local storage data
       localStorage.removeItem('formData');
-      sessionStorage.clear();
-    } catch (error: any) {
-      throw handleAuthError(error);
+      
+      // Clear only app-specific session storage items to avoid breaking other applications
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('lastAuthCheck');
+    } catch (error) {
+      throw handleAuthError(error as FirebaseError);
     }
   },
 
@@ -42,7 +52,7 @@ export const authService = {
 };
 
 // Firebase Auth error handling
-const handleAuthError = (error: any): AuthError => {
+const handleAuthError = (error: FirebaseError): AuthError => {
   let userFriendlyMessage = 'Ocorreu um erro durante a autenticação.';
 
   switch (error.code) {

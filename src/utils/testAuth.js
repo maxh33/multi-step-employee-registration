@@ -1,7 +1,15 @@
 // Test Firebase Authentication Setup
+// ⚠️  SECURITY WARNING: This file is for development testing only
+// ⚠️  Automatically disabled in production builds for security
 // Run this in the browser console on http://localhost:3000
 
 const testFirebaseAuth = async () => {
+  // Security check: Only allow in development environment
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('🚫 Test authentication is disabled in production for security reasons.');
+    return;
+  }
+
   try {
     // Use environment variables for test credentials (never hardcode!)
     const email = process.env.REACT_APP_TEST_USER_EMAIL;
@@ -75,11 +83,14 @@ const testFirebaseAuth = async () => {
   }
 };
 
-// Export for use in console
-window.testFirebaseAuth = testFirebaseAuth;
-
-console.log(
-  'Test function loaded! Run window.testFirebaseAuth() after updating email/password in the code.'
-);
+// Export for use in console (development only)
+if (process.env.NODE_ENV !== 'production') {
+  window.testFirebaseAuth = testFirebaseAuth;
+  console.log(
+    '🧪 Test function loaded! Run window.testFirebaseAuth() after updating email/password in the code.'
+  );
+} else {
+  console.log('🔒 Test authentication functions are disabled in production.');
+}
 
 export default testFirebaseAuth;

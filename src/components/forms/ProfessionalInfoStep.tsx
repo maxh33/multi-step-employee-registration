@@ -201,7 +201,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
                     <Button
                       size="small"
                       variant="contained"
-                      onClick={() => window.open('/departamentos', '_blank')}
+                      onClick={() => window.open(`${window.location.origin}/departamentos`, '_blank', 'noopener,noreferrer')}
                       sx={{ 
                         textTransform: 'none',
                         fontSize: '12px',
