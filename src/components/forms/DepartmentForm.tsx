@@ -172,15 +172,16 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
       }
       
       onSubmit(mode === 'edit', formData.name.trim());
-    } catch (error: any) {
-      setSubmitError(error.message || 'Erro ao salvar departamento');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar departamento';
+      setSubmitError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleChange = (field: keyof DepartmentFormData) => (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { value: string } }
   ) => {
     setFormData((prev) => ({
       ...prev,

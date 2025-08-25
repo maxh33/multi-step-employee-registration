@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -36,18 +36,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
   const [managers, setManagers] = useState<Employee[]>([]);
   const [loadingManagers, setLoadingManagers] = useState(false);
 
-  useEffect(() => {
-    fetchDepartments();
-  }, [data.department]); // Re-validate when department value changes
-
-  useEffect(() => {
-    // Fetch managers when hierarchical level is set and is not manager
-    if (data.hierarchicalLevel && data.hierarchicalLevel !== 'manager') {
-      fetchManagers();
-    }
-  }, [data.hierarchicalLevel]);
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       setLoadingDepartments(true);
       setDepartmentError(null);
@@ -73,16 +62,18 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
       if (fetchedDepartments.length === 0) {
         setDepartmentError('Nenhum departamento cadastrado. Por favor, crie departamentos primeiro.');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching departments:', error);
       
       // Provide specific error messages based on error type
       let errorMessage = 'Erro ao carregar departamentos';
-      if (error?.message?.includes('network') || error?.message?.includes('Failed to fetch')) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      if (errorMsg.includes('network') || errorMsg.includes('Failed to fetch')) {
         errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
-      } else if (error?.message?.includes('permission-denied')) {
+      } else if (errorMsg.includes('permission-denied')) {
         errorMessage = 'Sem permissão para acessar departamentos.';
-      } else if (error?.message?.includes('index')) {
+      } else if (errorMsg.includes('index')) {
         errorMessage = 'Configuração do banco de dados em andamento. Tente novamente em alguns instantes.';
       }
       
@@ -90,7 +81,18 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
     } finally {
       setLoadingDepartments(false);
     }
-  };
+  }, [data, onChange]); // Include dependencies used in the function
+
+  useEffect(() => {
+    fetchDepartments();
+  }, [fetchDepartments, data.department]); // Re-validate when department value changes
+
+  useEffect(() => {
+    // Fetch managers when hierarchical level is set and is not manager
+    if (data.hierarchicalLevel && data.hierarchicalLevel !== 'manager') {
+      fetchManagers();
+    }
+  }, [data.hierarchicalLevel]);
 
   const fetchManagers = async () => {
     try {
@@ -324,7 +326,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
           <FormControl fullWidth error={!!getFieldError('hierarchicalLevel')}>
             <Select
               value={data.hierarchicalLevel || ''}
-              onChange={(e) => onChange({ ...data, hierarchicalLevel: e.target.value as any })}
+              onChange={(e) => onChange({ ...data, hierarchicalLevel: e.target.value as 'junior' | 'mid-level' | 'senior' | 'manager' })}
               displayEmpty
               disabled={isHierarchicalLevelLocked}
               IconComponent={ExpandMoreIcon}

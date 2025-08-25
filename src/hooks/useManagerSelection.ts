@@ -29,7 +29,7 @@ export const useManagerSelection = (currentEmployeeId?: string): UseManagerSelec
       );
       
       // Type conversion - for now treat Employee as ExtendedEmployee
-      setAvailableManagers(managers as any);
+      setAvailableManagers(managers as ExtendedEmployee[]);
     } catch (err) {
       setError('Erro ao carregar lista de gerentes');
       console.error('Error fetching managers:', err);

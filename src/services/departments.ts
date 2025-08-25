@@ -9,7 +9,6 @@ import {
   updateDoc,
   query,
   where,
-  orderBy,
   Timestamp,
   QueryDocumentSnapshot,
   DocumentData,
@@ -22,8 +21,7 @@ import {
   CreateDepartmentRequest,
   UpdateDepartmentRequest,
 } from '../types/department';
-import { ExtendedEmployee } from '../types/extendedEmployee';
-import { getEmployee, updateEmployeeDepartment, getAllEmployees } from './firebase';
+import { updateEmployeeDepartment } from './firebase';
 
 // Helper function to convert Firestore document to Department
 const convertDocToDepartment = (doc: QueryDocumentSnapshot<DocumentData>): Department => {
@@ -40,9 +38,9 @@ const convertDocToDepartment = (doc: QueryDocumentSnapshot<DocumentData>): Depar
 };
 
 // Error handling helper
-const handleDepartmentError = (error: any, operation: string): Error => {
+const handleDepartmentError = (error: unknown, operation: string): Error => {
   console.error(`Department ${operation} error:`, error);
-  const message = error?.message || `Failed to ${operation} department`;
+  const message = (error instanceof Error ? error.message : undefined) || `Failed to ${operation} department`;
   return new Error(message);
 };
 
@@ -125,15 +123,16 @@ export const getAllDepartments = async (retryCount = 0): Promise<Department[]> =
     
     // Sort client-side to avoid requiring composite index
     return departments.sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Department listing attempt ${retryCount + 1} failed:`, error);
     
     // Retry on network errors or if retries remaining
+    const errorObj = error instanceof Error ? error : { code: undefined, message: String(error) };
     if (retryCount < maxRetries && (
-      error?.code === 'unavailable' || 
-      error?.message?.includes('network') ||
-      error?.message?.includes('UNAVAILABLE') ||
-      error?.message?.includes('Failed to get document')
+      (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'unavailable') || 
+      errorObj.message?.includes('network') ||
+      errorObj.message?.includes('UNAVAILABLE') ||
+      errorObj.message?.includes('Failed to get document')
     )) {
       console.log(`Retrying department fetch (attempt ${retryCount + 2}/${maxRetries + 1})...`);
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000)); // Exponential backoff
@@ -195,7 +194,7 @@ export const updateDepartment = async (
   updates: UpdateDepartmentRequest
 ): Promise<void> => {
   try {
-    const updateData: any = {
+    const updateData: Partial<FirebaseDepartment> = {
       updatedAt: Timestamp.now(),
     };
 

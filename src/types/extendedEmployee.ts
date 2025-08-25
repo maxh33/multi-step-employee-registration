@@ -1,6 +1,6 @@
 // Extended Employee form data interfaces - Phase 2B/2C Implementation
 
-import { Timestamp } from 'firebase/firestore';
+import { Department, CreateDepartmentRequest, UpdateDepartmentRequest } from './department';
 
 // Hierarchical levels for employees
 export type HierarchicalLevel = 'junior' | 'mid-level' | 'senior' | 'manager';
@@ -115,10 +115,10 @@ export interface ExtendedFirebaseOperations {
   updateEmployeeDepartment: (employeeId: string, departmentId: string) => Promise<void>;
   
   // Department operations
-  createDepartment: (data: any) => Promise<string>;
-  updateDepartment: (id: string, data: any) => Promise<void>;
-  getDepartment: (id: string) => Promise<any>;
-  getAllDepartments: () => Promise<any[]>;
+  createDepartment: (data: CreateDepartmentRequest) => Promise<string>;
+  updateDepartment: (id: string, data: UpdateDepartmentRequest) => Promise<void>;
+  getDepartment: (id: string) => Promise<Department | null>;
+  getAllDepartments: () => Promise<Department[]>;
   deleteDepartment: (id: string, transferToDepartmentId?: string) => Promise<void>;
 }
 

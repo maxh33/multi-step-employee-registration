@@ -127,8 +127,8 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
     if (!sortField) return filtered;
 
     return [...filtered].sort((a, b) => {
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
+      let aValue: unknown = a[sortField];
+      let bValue: unknown = b[sortField];
 
       // Handle special sorting cases
       if (sortField === 'name') {
@@ -140,9 +140,9 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
         
         // For numeric sorting
         if (sortDirection === 'asc') {
-          return aValue - bValue;
+          return (aValue as number) - (bValue as number);
         } else {
-          return bValue - aValue;
+          return (bValue as number) - (aValue as number);
         }
       }
 
@@ -253,8 +253,9 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
         await fetchDepartments();
         setSelectedDepartments(new Set());
         setIsDeleteMode(false);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao excluir departamentos');
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir departamentos';
+        setError(errorMessage);
       }
     }
   };
@@ -266,8 +267,9 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
         await fetchDepartments();
         setDeleteDialogOpen(false);
         setDepartmentToDelete(null);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao excluir departamento');
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir departamento';
+        setError(errorMessage);
       }
     }
   };

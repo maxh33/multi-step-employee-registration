@@ -2,12 +2,10 @@ import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
   collection,
-  addDoc,
   updateDoc,
   doc,
   getDoc,
   getDocs,
-  deleteDoc,
   query,
   orderBy,
   where,
@@ -296,8 +294,6 @@ export const updateEmployeeDepartment = async (
     if (!employeeDoc.exists()) {
       throw new Error('Employee not found');
     }
-    
-    const currentData = employeeDoc.data();
     
     // Update the department in professional info
     await updateDoc(employeeRef, {

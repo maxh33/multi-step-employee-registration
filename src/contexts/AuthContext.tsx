@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { authService } from '../services/auth';
+import { AuthError } from '../types/global';
 
 interface AuthState {
   user: User | null;
@@ -48,11 +49,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authService.signIn(email, password);
       // User state will be updated by onAuthStateChanged
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const authError = error as AuthError;
       setState((prev) => ({
         ...prev,
         loading: false,
-        error: error.userFriendlyMessage || 'Erro na autenticação',
+        error: authError.userFriendlyMessage || 'Erro na autenticação',
       }));
       throw error; // Re-throw to handle in component
     }
@@ -63,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authService.signOut();
       // User state will be updated by onAuthStateChanged
-    } catch (error: any) {
+    } catch (error: unknown) {
       setState((prev) => ({
         ...prev,
         loading: false,

@@ -1,6 +1,7 @@
 // Department data interfaces - Phase 2C Implementation
 
 import { Timestamp } from 'firebase/firestore';
+import { Employee } from './employee';
 
 // Core Department interface
 export interface Department {
@@ -28,8 +29,8 @@ export interface DepartmentWithEmployees {
   id: string;
   name: string;
   responsibleManagerId: string;
-  employees: any[]; // Will be Employee[] when we have extended employee types
-  responsibleManager: any | null; // Will be Employee when we have extended employee types
+  employees: Employee[];
+  responsibleManager: Employee | null;
   employeeCount: number;
   createdAt: Date;
   updatedAt: Date;

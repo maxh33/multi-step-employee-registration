@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Department } from '../types/department';
 import { Employee } from '../types/employee';
-import { getAllDepartments, getDepartment, transferEmployeeToDepartment } from '../services/departments';
+import { getAllDepartments, transferEmployeeToDepartment } from '../services/departments';
 import { getEmployeesByDepartment } from '../services/firebase';
 
 interface UseDepartmentEmployeesReturn {

@@ -40,7 +40,7 @@ function DashboardApp() {
 
   // Add sync function to global scope for manual data repair
   React.useEffect(() => {
-    (window as any).repairDepartmentCounts = syncDepartmentEmployeeCounts;
+    window.repairDepartmentCounts = syncDepartmentEmployeeCounts;
   }, []);
   const handleCreateNew = () => {
     setEditingEmployee(null);

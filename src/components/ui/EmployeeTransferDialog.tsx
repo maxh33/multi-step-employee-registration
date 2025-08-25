@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -52,18 +52,7 @@ const EmployeeTransferDialog: React.FC<EmployeeTransferDialogProps> = ({
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(new Set());
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (open) {
-      fetchDepartments();
-      setSelectedDepartmentId('');
-      setError(null);
-      setTransferProgress(0);
-      setSelectedEmployeeIds(new Set(employees.map(emp => emp.id)));
-      setEmployeeSearchTerm('');
-    }
-  }, [open, employees]);
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const allDepartments = await getAllDepartments();
       // Filter out current department if provided
@@ -75,7 +64,18 @@ const EmployeeTransferDialog: React.FC<EmployeeTransferDialogProps> = ({
       setError('Erro ao carregar departamentos');
       console.error('Error fetching departments:', err);
     }
-  };
+  }, [currentDepartmentId]);
+
+  useEffect(() => {
+    if (open) {
+      fetchDepartments();
+      setSelectedDepartmentId('');
+      setError(null);
+      setTransferProgress(0);
+      setSelectedEmployeeIds(new Set(employees.map(emp => emp.id)));
+      setEmployeeSearchTerm('');
+    }
+  }, [open, employees, fetchDepartments]);
 
   const getSelectedEmployees = () => {
     return allowEmployeeSelection 
@@ -149,8 +149,9 @@ const EmployeeTransferDialog: React.FC<EmployeeTransferDialogProps> = ({
       
       onTransfer(message);
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Erro ao transferir colaboradores');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao transferir colaboradores';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

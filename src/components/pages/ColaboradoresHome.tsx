@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -115,14 +115,14 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   }, [employees]);
 
   // Utility function to get department name from ID
-  const getDepartmentName = (departmentId: string): string => {
+  const getDepartmentName = useCallback((departmentId: string): string => {
     return departmentNames[departmentId] || departmentId || 'Não definido';
-  };
+  }, [departmentNames]);
 
   // Utility function to get manager name from ID
-  const getManagerName = (managerId: string): string => {
+  const getManagerName = useCallback((managerId: string): string => {
     return managerNames[managerId] || 'Carregando...';
-  };
+  }, [managerNames]);
 
   // Utility function to format salary
   const formatSalary = (salary?: number): string => {
@@ -195,8 +195,8 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
     if (!sortField) return filtered;
 
     return [...filtered].sort((a, b) => {
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
+      let aValue: unknown = a[sortField];
+      let bValue: unknown = b[sortField];
 
       // Handle special sorting cases
       if (sortField === 'firstName') {
@@ -271,7 +271,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
       const bStr = String(bValue || '').toLowerCase();
       return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
     });
-  }, [employees, searchTerm, sortField, sortDirection, departmentNames, managerNames, departmentFilter, getDepartmentName, getManagerName]);
+  }, [employees, searchTerm, sortField, sortDirection, departmentFilter, getDepartmentName, getManagerName]);
 
   // Bulk selection helpers (defined after filteredAndSortedEmployees)
   const isAllSelected = selectedEmployees.size === filteredAndSortedEmployees.length && filteredAndSortedEmployees.length > 0;
