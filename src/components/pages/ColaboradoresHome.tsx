@@ -75,14 +75,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
     }
   };
 
-  // Get minimum table width for horizontal scroll
-  const getMinTableWidth = (isDeleteMode: boolean) => {
-    if (isMobile) {
-      // Sum of corrected 5-column widths: 200+180+160+140+120 = 800px
-      return isDeleteMode ? '840px' : '800px';  // +40px for checkbox
-    }
-    return 'auto'; // Let CSS Grid handle on larger screens
-  };
 
   // Sorting state
   const [sortField, setSortField] = useState<keyof Employee | null>(null);
@@ -562,7 +554,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
       {/* Unified Table Structure */}
       <Box
         sx={{
-          overflowX: isMobile ? 'auto' : 'visible',
+          overflowX: 'auto',
           '&::-webkit-scrollbar': {
             height: 8,
           },
@@ -582,8 +574,8 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
             borderRadius: '12px',
             border: `1px solid ${theme.palette.grey[200]}`,
             overflow: 'hidden',
-            minWidth: getMinTableWidth(isDeleteMode),
-            width: 'fit-content',
+            width: '100%',
+            minWidth: isMobile ? '800px' : '100%',
           }}
         >
           {/* Table Headers */}

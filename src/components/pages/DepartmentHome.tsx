@@ -62,14 +62,6 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
     }
   };
 
-  // Get minimum table width for horizontal scroll
-  const getDeptMinTableWidth = (isDeleteMode: boolean) => {
-    if (isMobile) {
-      // Sum of corrected 4-column widths: 180+150+100+120 = 550px
-      return isDeleteMode ? '590px' : '550px';  // +40px for checkbox
-    }
-    return 'auto'; // Let CSS Grid handle on larger screens
-  };
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -427,7 +419,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
       {/* Unified Departments Table Structure */}
       <Box
         sx={{
-          overflowX: isMobile ? 'auto' : 'visible',
+          overflowX: 'auto',
           '&::-webkit-scrollbar': {
             height: 8,
           },
@@ -447,8 +439,8 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
             borderRadius: '12px',
             border: `1px solid ${theme.palette.grey[200]}`,
             overflow: 'hidden',
-            minWidth: getDeptMinTableWidth(isDeleteMode),
-            width: 'fit-content',
+            width: '100%',
+            minWidth: isMobile ? '550px' : '100%',
           }}
         >
           {/* Table Headers */}
