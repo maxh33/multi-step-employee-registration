@@ -30,7 +30,6 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { Employee } from '../../types/employee';
 import { getAllDepartments } from '../../services/departments';
 import { getEmployeeName } from '../../services/firebase';
-import TruncatedText from '../ui/TruncatedText';
 
 interface ColaboradoresHomeProps {
   onCreateNew: () => void;
@@ -55,23 +54,23 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'));
 
-  // Responsive grid column templates with correct 5-column structure
+  // Responsive grid column templates with optimized single-line first column
   const getGridColumns = (isDeleteMode: boolean) => {
     if (isMobile) {
-      // Mobile: 5 columns matching content structure
+      // Mobile: Single-line format needs less space than before
       return isDeleteMode 
-        ? '40px 200px 180px 160px 140px 120px'  // With checkbox - 6 columns total
-        : '200px 180px 160px 140px 120px';      // Without checkbox - 5 columns total
+        ? '40px 280px 160px 140px 120px 100px'  // With checkbox - 6 columns total
+        : '280px 160px 140px 120px 100px';      // Without checkbox - 5 columns total
     } else if (isTablet) {
-      // Tablet: Show priority columns with flexible widths
+      // Tablet: Balanced space distribution with single-line efficiency  
       return isDeleteMode 
-        ? '40px 1fr 1.2fr 1fr 0.8fr 100px' 
-        : '1fr 1.2fr 1fr 0.8fr 100px';
+        ? '40px 2fr 1.2fr 1fr 0.8fr 100px' 
+        : '2fr 1.2fr 1fr 0.8fr 100px';
     } else {
-      // Desktop: Original flexible spacing
+      // Desktop: Well-balanced columns with single-line first column
       return isDeleteMode 
-        ? '40px 1fr 1fr 1fr 1fr 120px' 
-        : '1fr 1fr 1fr 1fr 120px';
+        ? '40px 1.8fr 1.2fr 1fr 0.8fr 120px' 
+        : '1.8fr 1.2fr 1fr 0.8fr 120px';
     }
   };
 
@@ -575,7 +574,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
             border: `1px solid ${theme.palette.grey[200]}`,
             overflow: 'hidden',
             width: '100%',
-            minWidth: isMobile ? '800px' : '100%',
+            minWidth: isMobile ? '820px' : '100%',
           }}
         >
           {/* Table Headers */}
@@ -932,12 +931,13 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 )}
 
                 {/* Column 1: Personal Identity (Nome / Email) */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
                   <Box
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: theme.spacing(2),
+                      minWidth: 0,
                     }}
                   >
                     <Avatar
@@ -949,48 +949,58 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                         fontSize: '14px',
                         fontWeight: 600,
                         color: '#ffffff',
+                        flexShrink: 0,
                       }}
                     >
                       {employee.firstName.charAt(0).toUpperCase()}
                     </Avatar>
-                    <TruncatedText
-                      text={employee.firstName}
-                      maxLength={isMobile ? 12 : 20}
+                    <Typography
                       variant="body2"
                       sx={{
                         fontSize: '14px',
                         fontWeight: 500,
                         color: theme.palette.text.primary,
-                        maxWidth: isMobile ? '110px' : '160px',
+                        minWidth: 0,
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        hyphens: 'auto',
                       }}
-                    />
+                    >
+                      {employee.firstName}
+                    </Typography>
                   </Box>
-                  <TruncatedText
-                    text={employee.email}
-                    maxLength={isMobile ? 20 : 30}
+                  <Typography
                     variant="body2"
                     sx={{
                       fontSize: '13px',
                       color: theme.palette.text.secondary,
                       ml: 5.5, // Align with the text above (avatar width + gap)
-                      maxWidth: isMobile ? '130px' : '150px',
+                      minWidth: 0,
+                      wordBreak: 'break-all',
+                      overflowWrap: 'break-word',
+                      hyphens: 'auto',
                     }}
-                  />
+                  >
+                    {employee.email}
+                  </Typography>
                 </Box>
 
                 {/* Column 2: Organizational Context (Departamento / Data de Admissão) */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <TruncatedText
-                    text={getDepartmentName(employee.department)}
-                    maxLength={isMobile ? 15 : 25}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
+                  <Typography
                     variant="body2"
                     sx={{
                       fontSize: '14px',
                       color: theme.palette.text.secondary,
                       fontWeight: 500,
-                      maxWidth: isMobile ? '100px' : '140px',
+                      minWidth: 0,
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      hyphens: 'auto',
                     }}
-                  />
+                  >
+                    {getDepartmentName(employee.department)}
+                  </Typography>
                   <Typography
                     variant="body2"
                     sx={{
@@ -1004,18 +1014,21 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 </Box>
 
                 {/* Column 3: Professional Role (Cargo / Nível) */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <TruncatedText
-                    text={employee.position || 'N/A'}
-                    maxLength={isMobile ? 12 : 20}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
+                  <Typography
                     variant="body2"
                     sx={{
                       fontSize: '14px',
                       color: theme.palette.text.secondary,
                       fontWeight: 500,
-                      maxWidth: isMobile ? '90px' : '120px',
+                      minWidth: 0,
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      hyphens: 'auto',
                     }}
-                  />
+                  >
+                    {employee.position || 'N/A'}
+                  </Typography>
                   <Box>
                     {employee.hierarchicalLevel ? (
                       <Chip
@@ -1054,7 +1067,7 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 </Box>
 
                 {/* Column 4: Management & Status (Status / Responsável) */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
                   <Chip
                     label={employee.status}
                     size="small"
@@ -1069,17 +1082,20 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                       borderRadius: '5px',
                     }}
                   />
-                  <TruncatedText
-                    text={employee.responsibleManager ? getManagerName(employee.responsibleManager) : 'N/A'}
-                    maxLength={isMobile ? 10 : 15}
+                  <Typography
                     variant="body2"
                     sx={{
                       fontSize: '13px',
                       color: theme.palette.text.secondary,
                       opacity: 0.8,
-                      maxWidth: isMobile ? '90px' : '110px',
+                      minWidth: 0,
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      hyphens: 'auto',
                     }}
-                  />
+                  >
+                    {employee.responsibleManager ? getManagerName(employee.responsibleManager) : 'N/A'}
+                  </Typography>
                 </Box>
 
                 {/* Column 5: Compensation (Salário Base) */}

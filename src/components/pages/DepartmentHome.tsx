@@ -34,7 +34,6 @@ import DepartmentForm from '../forms/DepartmentForm';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import Toast from '../ui/Toast';
 import { useToast } from '../../hooks/useToast';
-import TruncatedText from '../ui/TruncatedText';
 
 interface DepartmentHomeProps {
   onNavigateToEmployees?: (departmentFilter?: string) => void;
@@ -666,17 +665,20 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
                 )}
 
                 {/* Nome Column */}
-                <TruncatedText
-                  text={dept.name}
-                  maxLength={isMobile ? 18 : 30}
+                <Typography
                   variant="body2"
                   sx={{
                     fontSize: '14px',
                     fontWeight: 500,
                     color: theme.palette.text.primary,
-                    maxWidth: isMobile ? '140px' : '160px',
+                    minWidth: 0,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    hyphens: 'auto',
                   }}
-                />
+                >
+                  {dept.name}
+                </Typography>
 
                 {/* Responsável Column */}
                 <Chip
