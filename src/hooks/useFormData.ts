@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import validator from 'validator';
 import { EmployeeFormData, FormState, ValidationResult } from '../types/employee';
+import { validateHierarchicalLevelChange } from '../services/firebase';
 
 const STORAGE_KEY = 'employee-form-data';
 
@@ -22,7 +23,7 @@ const initialFormData: Partial<EmployeeFormData> = {
 };
 
 // Basic validation rules - All 8 fields are required (3 personal + 5 professional)
-const validateStep = (step: number, formData: Partial<EmployeeFormData>): ValidationResult => {
+const validateStep = (step: number, formData: Partial<EmployeeFormData>, employeeId?: string): ValidationResult => {
   const errors: Record<string, string> = {};
 
   if (step === 1) {
@@ -61,6 +62,13 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
         !formData.professionalInfo?.responsibleManager?.trim()) {
       errors['professionalInfo.responsibleManager'] = 'Responsável é obrigatório para este nível';
     }
+    
+    // Prevent self-assignment as responsible manager
+    if (employeeId && 
+        formData.professionalInfo?.responsibleManager && 
+        formData.professionalInfo.responsibleManager === employeeId) {
+      errors['professionalInfo.responsibleManager'] = 'Um colaborador não pode ser responsável por si mesmo';
+    }
     if (!formData.professionalInfo?.baseSalary || formData.professionalInfo.baseSalary <= 0) {
       errors['professionalInfo.baseSalary'] = 'Salário base deve ser maior que zero';
     }
@@ -95,7 +103,35 @@ const calculateProgress = (formData: Partial<EmployeeFormData>): number => {
   return Math.round((filledFields / fields.length) * 100);
 };
 
-export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
+// Async validation for hierarchical level changes in edit mode
+const validateHierarchicalLevelAsync = async (
+  employeeId: string | undefined,
+  currentLevel: string | undefined,
+  newLevel: string | undefined
+): Promise<{ isValid: boolean; error?: string }> => {
+  if (!employeeId || !currentLevel || !newLevel || currentLevel === newLevel) {
+    return { isValid: true };
+  }
+
+  try {
+    const validation = await validateHierarchicalLevelChange(employeeId, currentLevel, newLevel);
+    return {
+      isValid: validation.isValid,
+      error: validation.reason,
+    };
+  } catch (error) {
+    console.error('Error validating hierarchical level:', error);
+    return {
+      isValid: false,
+      error: 'Erro ao validar mudança de nível hierárquico. Tente novamente.',
+    };
+  }
+};
+
+export const useFormData = (
+  initialData?: Partial<EmployeeFormData>,
+  employeeId?: string
+) => {
   const [formState, setFormState] = useState<FormState>(() => {
     // If initialData is provided (editing mode), use it
     if (initialData) {
@@ -199,14 +235,54 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
 
   // Validate current step
   const validateCurrentStep = useCallback(() => {
-    const validation = validateStep(formState.currentStep, formState.formData);
+    const validation = validateStep(formState.currentStep, formState.formData, employeeId);
     setFormState((prev) => ({
       ...prev,
       errors: validation.errors,
       isValid: validation.isValid,
     }));
     return validation.isValid;
-  }, [formState.currentStep, formState.formData]);
+  }, [formState.currentStep, formState.formData, employeeId]);
+
+  // Async validation for hierarchical level changes (for edit mode)
+  const validateHierarchicalLevel = useCallback(async () => {
+    if (!employeeId || !initialData?.professionalInfo?.hierarchicalLevel) {
+      return true; // Skip validation for create mode
+    }
+
+    const currentLevel = initialData.professionalInfo.hierarchicalLevel;
+    const newLevel = formState.formData.professionalInfo?.hierarchicalLevel;
+
+    if (!newLevel || currentLevel === newLevel) {
+      return true; // No change, validation passes
+    }
+
+    const validation = await validateHierarchicalLevelAsync(employeeId, currentLevel, newLevel);
+    
+    if (!validation.isValid) {
+      setFormState((prev) => ({
+        ...prev,
+        errors: {
+          ...prev.errors,
+          'professionalInfo.hierarchicalLevel': validation.error || 'Mudança de nível hierárquico não permitida',
+        },
+        isValid: false,
+      }));
+      return false;
+    }
+
+    // Clear any existing hierarchical level errors if validation passes
+    setFormState((prev) => {
+      const newErrors = { ...prev.errors };
+      delete newErrors['professionalInfo.hierarchicalLevel'];
+      return {
+        ...prev,
+        errors: newErrors,
+      };
+    });
+
+    return true;
+  }, [employeeId, initialData?.professionalInfo?.hierarchicalLevel, formState.formData.professionalInfo?.hierarchicalLevel]);
 
   // Move to next step
   const nextStep = useCallback(() => {
@@ -278,6 +354,7 @@ export const useFormData = (initialData?: Partial<EmployeeFormData>) => {
     updatePersonalInfo,
     updateProfessionalInfo,
     validateCurrentStep,
+    validateHierarchicalLevel,
     nextStep,
     previousStep,
     goToStep,

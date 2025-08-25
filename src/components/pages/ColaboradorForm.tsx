@@ -99,17 +99,30 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
     updatePersonalInfo,
     updateProfessionalInfo,
     validateCurrentStep,
+    validateHierarchicalLevel,
     nextStep,
     previousStep,
     clearFormData,
-  } = useFormData(initialFormData);
+  } = useFormData(initialFormData, editingEmployee?.id);
 
   const stepTitles = ['Infos Básicas', 'Informações Profissionais'];
   const totalSteps = 2;
 
   const handleNext = async () => {
     setSubmitError(null); // Clear any previous errors
-    if (validateCurrentStep()) {
+    
+    // Run all validation checks
+    let isValid = validateCurrentStep();
+    
+    // Additional validation for hierarchical level changes in edit mode (step 2)
+    if (isValid && currentStep === 2 && editingEmployee?.id) {
+      const hierarchicalLevelValid = await validateHierarchicalLevel();
+      if (!hierarchicalLevelValid) {
+        isValid = false;
+      }
+    }
+    
+    if (isValid) {
       if (currentStep < totalSteps) {
         nextStep();
       } else {
@@ -367,6 +380,9 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
                       onChange={updateProfessionalInfo}
                       isDepartmentLocked={!!(fromDepartment && role === 'manager')}
                       isHierarchicalLevelLocked={!!(fromDepartment && role === 'manager')}
+                      onHierarchicalLevelChange={validateHierarchicalLevel}
+                      employeeId={editingEmployee?.id}
+                      currentHierarchicalLevel={editingEmployee?.hierarchicalLevel}
                     />
                   )}
                 </Box>
@@ -512,6 +528,9 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
                         onChange={updateProfessionalInfo}
                         isDepartmentLocked={!!(fromDepartment && role === 'manager')}
                         isHierarchicalLevelLocked={!!(fromDepartment && role === 'manager')}
+                        onHierarchicalLevelChange={validateHierarchicalLevel}
+                        employeeId={editingEmployee?.id}
+                        currentHierarchicalLevel={editingEmployee?.hierarchicalLevel}
                       />
                     )}
                   </Box>

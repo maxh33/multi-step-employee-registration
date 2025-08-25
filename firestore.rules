@@ -74,7 +74,12 @@ service cloud.firestore {
              // Allow additional fields for Phase 2B (position, admissionDate, etc.)
              professionalInfo.department is string &&
              professionalInfo.department.size() > 0 &&
-             professionalInfo.department.size() <= 50;
+             professionalInfo.department.size() <= 50 &&
+             // Validate hierarchical level if present
+             (!professionalInfo.keys().hasAny(['hierarchicalLevel']) || 
+              validateHierarchicalLevel(professionalInfo.hierarchicalLevel)) &&
+             // Validate manager relationships
+             validateManagerRelationships(professionalInfo);
     }
     
     // Validate system-generated fields
@@ -101,6 +106,45 @@ service cloud.firestore {
       return !name.matches('.*[<>\"\'&].*') &&  // Prevent HTML/script injection
              !name.matches('.*[{}\\[\\]].*') &&   // Prevent JSON injection
              name.matches('[a-zA-ZÀ-ÿ\\s.,-]+');  // Allow letters, accents, spaces, basic punctuation
+    }
+    
+    // Validate hierarchical level values
+    function validateHierarchicalLevel(level) {
+      return level is string &&
+             level in ['junior', 'mid-level', 'senior', 'manager'];
+    }
+    
+    // Validate manager relationships and prevent invalid downgrades
+    function validateManagerRelationships(professionalInfo) {
+      // For updates, check if this is a manager downgrade
+      if (request.method == 'update' && 
+          resource.data.professionalInfo.hierarchicalLevel == 'manager' &&
+          professionalInfo.hierarchicalLevel != 'manager') {
+        // Prevent manager downgrade if they have active subordinates
+        // This check is performed at the application level, rules just prevent the change
+        return false; // Block manager downgrades at database level
+      }
+      
+      // Validate responsible manager field
+      if (professionalInfo.keys().hasAny(['responsibleManager'])) {
+        // If hierarchical level is manager, responsibleManager should be empty
+        if (professionalInfo.hierarchicalLevel == 'manager') {
+          return !professionalInfo.keys().hasAny(['responsibleManager']) ||
+                 professionalInfo.responsibleManager == '';
+        }
+        
+        // For non-managers, responsibleManager should be a valid string if present
+        if (professionalInfo.keys().hasAny(['responsibleManager']) &&
+            professionalInfo.responsibleManager != '') {
+          return professionalInfo.responsibleManager is string &&
+                 professionalInfo.responsibleManager.size() > 0 &&
+                 professionalInfo.responsibleManager.size() <= 50 &&
+                 // Prevent self-assignment as responsible manager
+                 professionalInfo.responsibleManager != resource.id;
+        }
+      }
+      
+      return true;
     }
     
     // Deny all other collections except authenticated users

@@ -340,11 +340,13 @@ export const getEmployeeName = async (employeeId: string): Promise<string | null
 };
 
 // Get employees with manager hierarchical level for selection
-export const getManagerEmployees = async (): Promise<Employee[]> => {
+export const getManagerEmployees = async (excludeEmployeeId?: string): Promise<Employee[]> => {
   try {
     const allEmployees = await getAllEmployees();
     return allEmployees.filter(employee => 
-      employee.hierarchicalLevel === 'manager'
+      employee.hierarchicalLevel === 'manager' &&
+      employee.status === 'Ativo' && // Only active managers
+      (!excludeEmployeeId || employee.id !== excludeEmployeeId) // Exclude specified employee
     );
   } catch (error) {
     console.error('Error fetching manager employees:', error);
@@ -377,6 +379,210 @@ export const getActiveNonManagerEmployeesByDepartment = async (departmentId: str
   } catch (error) {
     console.error('Error getting active non-manager employees by department:', error);
     return [];
+  }
+};
+
+// Helper function to check if a manager has subordinates
+export const checkManagerHasSubordinates = async (managerId: string): Promise<boolean> => {
+  try {
+    const allEmployees = await getAllEmployees();
+    return allEmployees.some(employee => 
+      employee.responsibleManager === managerId && 
+      employee.status === 'Ativo'
+    );
+  } catch (error) {
+    console.error('Error checking manager subordinates:', error);
+    throw handleFirebaseError(error, 'verificação de subordinados');
+  }
+};
+
+// Helper function to validate hierarchical level changes
+export const validateHierarchicalLevelChange = async (
+  employeeId: string, 
+  currentLevel: string | undefined,
+  newLevel: string
+): Promise<{ isValid: boolean; reason?: string }> => {
+  try {
+    // If changing from manager to non-manager level, check for subordinates
+    if (currentLevel === 'manager' && newLevel !== 'manager') {
+      const hasSubordinates = await checkManagerHasSubordinates(employeeId);
+      if (hasSubordinates) {
+        return {
+          isValid: false,
+          reason: 'Este gerente possui subordinados ativos. Transfira os subordinados para outro gerente antes de alterar o nível hierárquico.'
+        };
+      }
+    }
+    
+    return { isValid: true };
+  } catch (error) {
+    console.error('Error validating hierarchical level change:', error);
+    throw handleFirebaseError(error, 'validação de mudança de nível hierárquico');
+  }
+};
+
+// Data migration utility to fix inconsistent hierarchical relationships
+export const fixInconsistentManagerRelationships = async (): Promise<{
+  totalChecked: number;
+  issuesFound: number;
+  issuesFixed: number;
+  errors: string[];
+}> => {
+  try {
+    console.log('Starting manager relationship consistency check...');
+    
+    const allEmployees = await getAllEmployees();
+    const issues: Array<{ employee: Employee; issue: string; fix?: string }> = [];
+    const errors: string[] = [];
+    let fixedCount = 0;
+
+    // Check each employee for consistency issues
+    for (const employee of allEmployees) {
+      try {
+        // Issue 1: Manager-level employee has a responsible manager
+        if (employee.hierarchicalLevel === 'manager' && employee.responsibleManager) {
+          issues.push({
+            employee,
+            issue: `Manager "${employee.firstName}" has a responsible manager assigned`,
+            fix: 'Remove responsible manager',
+          });
+        }
+
+        // Issue 2: Non-manager employee has manager as subordinate
+        if (employee.hierarchicalLevel !== 'manager' && employee.responsibleManager) {
+          const manager = allEmployees.find(e => e.id === employee.responsibleManager);
+          if (manager && manager.hierarchicalLevel !== 'manager') {
+            issues.push({
+              employee,
+              issue: `Employee "${employee.firstName}" reports to "${manager.firstName}" who is not a manager`,
+              fix: 'Update manager level or reassign reporting',
+            });
+          }
+        }
+
+        // Issue 3: Manager with wrong hierarchical level but has subordinates
+        if (employee.hierarchicalLevel !== 'manager') {
+          const subordinates = allEmployees.filter(e => e.responsibleManager === employee.id);
+          if (subordinates.length > 0) {
+            issues.push({
+              employee,
+              issue: `Employee "${employee.firstName}" has ${subordinates.length} subordinates but is not marked as manager`,
+              fix: 'Update hierarchical level to manager',
+            });
+          }
+        }
+      } catch (error) {
+        errors.push(`Error checking employee ${employee.firstName}: ${error}`);
+      }
+    }
+
+    // Apply fixes for specific cases
+    for (const issue of issues) {
+      try {
+        if (issue.fix === 'Remove responsible manager') {
+          // Fix: Remove responsible manager from manager-level employees
+          await updateEmployee(issue.employee.id, {
+            professionalInfo: {
+              department: issue.employee.department,
+              position: issue.employee.position || '',
+              admissionDate: issue.employee.admissionDate?.toISOString().split('T')[0] || '',
+              hierarchicalLevel: issue.employee.hierarchicalLevel || 'junior',
+              responsibleManager: '', // Clear the responsible manager
+              baseSalary: issue.employee.baseSalary || 0,
+            },
+          });
+          fixedCount++;
+          console.log(`Fixed: Removed responsible manager from ${issue.employee.firstName}`);
+        }
+      } catch (error) {
+        errors.push(`Error fixing ${issue.employee.firstName}: ${error}`);
+      }
+    }
+
+    const report = {
+      totalChecked: allEmployees.length,
+      issuesFound: issues.length,
+      issuesFixed: fixedCount,
+      errors,
+    };
+
+    console.log('Manager relationship consistency check completed:', report);
+    
+    if (issues.length > fixedCount) {
+      console.warn('Some issues require manual intervention:');
+      issues.forEach(issue => {
+        if (issue.fix !== 'Remove responsible manager') {
+          console.warn(`- ${issue.issue}`);
+        }
+      });
+    }
+
+    return report;
+  } catch (error) {
+    console.error('Error during manager relationship fix:', error);
+    throw handleFirebaseError(error, 'correção de relacionamentos de gerência');
+  }
+};
+
+// Get data integrity report without making changes
+export const getDataIntegrityReport = async (): Promise<{
+  employees: Employee[];
+  issues: Array<{ employeeId: string; employeeName: string; issue: string; severity: 'high' | 'medium' | 'low' }>;
+  summary: { total: number; high: number; medium: number; low: number };
+}> => {
+  try {
+    const allEmployees = await getAllEmployees();
+    const issues: Array<{ employeeId: string; employeeName: string; issue: string; severity: 'high' | 'medium' | 'low' }> = [];
+
+    for (const employee of allEmployees) {
+      // High severity: Manager with responsible manager
+      if (employee.hierarchicalLevel === 'manager' && employee.responsibleManager) {
+        issues.push({
+          employeeId: employee.id,
+          employeeName: employee.firstName,
+          issue: 'Manager has a responsible manager assigned',
+          severity: 'high',
+        });
+      }
+
+      // High severity: Non-manager managing others
+      if (employee.hierarchicalLevel !== 'manager') {
+        const subordinates = allEmployees.filter(e => e.responsibleManager === employee.id);
+        if (subordinates.length > 0) {
+          issues.push({
+            employeeId: employee.id,
+            employeeName: employee.firstName,
+            issue: `Has ${subordinates.length} subordinates but is not marked as manager`,
+            severity: 'high',
+          });
+        }
+      }
+
+      // Medium severity: Reporting to non-manager
+      if (employee.hierarchicalLevel !== 'manager' && employee.responsibleManager) {
+        const manager = allEmployees.find(e => e.id === employee.responsibleManager);
+        if (manager && manager.hierarchicalLevel !== 'manager') {
+          issues.push({
+            employeeId: employee.id,
+            employeeName: employee.firstName,
+            issue: `Reports to ${manager.firstName} who is not a manager`,
+            severity: 'medium',
+          });
+        }
+      }
+    }
+
+    const summary = {
+      total: issues.length,
+      high: issues.filter(i => i.severity === 'high').length,
+      medium: issues.filter(i => i.severity === 'medium').length,
+      low: issues.filter(i => i.severity === 'low').length,
+    };
+
+    return { employees: allEmployees, issues, summary };
+  } catch (error) {
+    console.error('Error generating data integrity report:', error);
+    throw handleFirebaseError(error, 'geração de relatório de integridade');
   }
 };
 

@@ -11,13 +11,18 @@ import {
   Alert,
   Button,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { SelectChangeEvent } from '@mui/material';
 import { ProfessionalInfo, Employee } from '../../types/employee';
 import { Department } from '../../types/department';
 import { getAllDepartments } from '../../services/departments';
-import { getManagerEmployees } from '../../services/firebase';
+import { getManagerEmployees, checkManagerHasSubordinates } from '../../services/firebase';
 
 interface ProfessionalInfoStepProps {
   data: Partial<ProfessionalInfo>;
@@ -25,9 +30,21 @@ interface ProfessionalInfoStepProps {
   onChange: (data: Partial<ProfessionalInfo>) => void;
   isDepartmentLocked?: boolean;
   isHierarchicalLevelLocked?: boolean;
+  onHierarchicalLevelChange?: () => Promise<boolean>;
+  employeeId?: string; // For checking if manager has subordinates
+  currentHierarchicalLevel?: string; // Current level for comparison
 }
 
-const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, errors, onChange, isDepartmentLocked, isHierarchicalLevelLocked }) => {
+const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ 
+  data, 
+  errors, 
+  onChange, 
+  isDepartmentLocked, 
+  isHierarchicalLevelLocked, 
+  onHierarchicalLevelChange, 
+  employeeId, 
+  currentHierarchicalLevel 
+}) => {
   const theme = useTheme();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
@@ -35,6 +52,10 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
   
   const [managers, setManagers] = useState<Employee[]>([]);
   const [loadingManagers, setLoadingManagers] = useState(false);
+  const [hasSubordinates, setHasSubordinates] = useState(false);
+  const [checkingSubordinates, setCheckingSubordinates] = useState(false);
+  const [hierarchicalLevelLockedBySubordinates, setHierarchicalLevelLockedBySubordinates] = useState(false);
+  const [showLockDialog, setShowLockDialog] = useState(false);
 
   const fetchDepartments = useCallback(async () => {
     try {
@@ -83,6 +104,19 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
     }
   }, [data, onChange]); // Include dependencies used in the function
 
+  const fetchManagers = useCallback(async () => {
+    try {
+      setLoadingManagers(true);
+      const managerEmployees = await getManagerEmployees(employeeId); // Exclude current employee
+      setManagers(managerEmployees);
+    } catch (error) {
+      console.error('Error fetching managers:', error);
+      setManagers([]);
+    } finally {
+      setLoadingManagers(false);
+    }
+  }, [employeeId]);
+
   useEffect(() => {
     fetchDepartments();
   }, [fetchDepartments, data.department]); // Re-validate when department value changes
@@ -92,20 +126,32 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
     if (data.hierarchicalLevel && data.hierarchicalLevel !== 'manager') {
       fetchManagers();
     }
-  }, [data.hierarchicalLevel]);
+  }, [data.hierarchicalLevel, fetchManagers]); // Use fetchManagers from useCallback
 
-  const fetchManagers = async () => {
-    try {
-      setLoadingManagers(true);
-      const managerEmployees = await getManagerEmployees();
-      setManagers(managerEmployees);
-    } catch (error) {
-      console.error('Error fetching managers:', error);
-      setManagers([]);
-    } finally {
-      setLoadingManagers(false);
-    }
-  };
+  // Check if current manager has subordinates (for edit mode)
+  useEffect(() => {
+    const checkSubordinates = async () => {
+      if (employeeId && currentHierarchicalLevel === 'manager') {
+        try {
+          setCheckingSubordinates(true);
+          const subordinatesExist = await checkManagerHasSubordinates(employeeId);
+          setHasSubordinates(subordinatesExist);
+          setHierarchicalLevelLockedBySubordinates(subordinatesExist);
+        } catch (error) {
+          console.error('Error checking manager subordinates:', error);
+          setHasSubordinates(false);
+          setHierarchicalLevelLockedBySubordinates(false);
+        } finally {
+          setCheckingSubordinates(false);
+        }
+      } else {
+        setHasSubordinates(false);
+        setHierarchicalLevelLockedBySubordinates(false);
+      }
+    };
+
+    checkSubordinates();
+  }, [employeeId, currentHierarchicalLevel]);
 
   const handleFieldChange =
     (field: keyof ProfessionalInfo) => (event: SelectChangeEvent<string>) => {
@@ -115,6 +161,39 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
         [field]: value,
       });
     };
+
+  const handleHierarchicalLevelChange = async (event: SelectChangeEvent<string>) => {
+    const newLevel = event.target.value as 'junior' | 'mid-level' | 'senior' | 'manager';
+    
+    // Update the value first
+    onChange({
+      ...data,
+      hierarchicalLevel: newLevel,
+      // Clear responsible manager if changing to manager level
+      responsibleManager: newLevel === 'manager' ? '' : data.responsibleManager,
+    });
+
+    // Run async validation if provided
+    if (onHierarchicalLevelChange) {
+      await onHierarchicalLevelChange();
+    }
+  };
+
+  const handleLockedHierarchicalLevelClick = () => {
+    if (hierarchicalLevelLockedBySubordinates) {
+      setShowLockDialog(true);
+    }
+  };
+
+  const handleCloseLockDialog = () => {
+    setShowLockDialog(false);
+  };
+
+  // Determine if hierarchical level should be locked
+  const isHierarchicalLevelActuallyLocked = 
+    isHierarchicalLevelLocked || 
+    hierarchicalLevelLockedBySubordinates ||
+    checkingSubordinates;
 
   const getFieldError = (field: string) => {
     return errors[`professionalInfo.${field}`] || '';
@@ -322,13 +401,27 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
             }}
           >
             Nível Hierárquico *
+            {hierarchicalLevelLockedBySubordinates && (
+              <Typography
+                component="span"
+                variant="caption"
+                sx={{ 
+                  ml: 1, 
+                  color: 'warning.main',
+                  fontStyle: 'italic'
+                }}
+              >
+                (Bloqueado - possui subordinados)
+              </Typography>
+            )}
           </Typography>
           <FormControl fullWidth error={!!getFieldError('hierarchicalLevel')}>
             <Select
               value={data.hierarchicalLevel || ''}
-              onChange={(e) => onChange({ ...data, hierarchicalLevel: e.target.value as 'junior' | 'mid-level' | 'senior' | 'manager' })}
+              onChange={handleHierarchicalLevelChange}
               displayEmpty
-              disabled={isHierarchicalLevelLocked}
+              disabled={isHierarchicalLevelActuallyLocked}
+              onClick={hierarchicalLevelLockedBySubordinates ? handleLockedHierarchicalLevelClick : undefined}
               IconComponent={ExpandMoreIcon}
               sx={{
                 backgroundColor: '#fff',
@@ -467,6 +560,39 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
           />
         </Box>
       </Box>
+
+      {/* Lock Dialog */}
+      <Dialog
+        open={showLockDialog}
+        onClose={handleCloseLockDialog}
+        aria-labelledby="lock-dialog-title"
+        aria-describedby="lock-dialog-description"
+      >
+        <DialogTitle id="lock-dialog-title">
+          Nível Hierárquico Bloqueado
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="lock-dialog-description">
+            Este gerente possui subordinados ativos. Transfira os subordinados para outro gerente antes de alterar o nível hierárquico.
+          </DialogContentText>
+          {hasSubordinates && (
+            <DialogContentText sx={{ mt: 2, fontWeight: 500 }}>
+              Para alterar o nível hierárquico:
+            </DialogContentText>
+          )}
+          <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+            <li>Acesse a lista de colaboradores</li>
+            <li>Encontre os subordinados deste gerente</li>
+            <li>Atribua um novo gerente responsável a cada subordinado</li>
+            <li>Retorne a este formulário para alterar o nível hierárquico</li>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLockDialog} color="primary" autoFocus>
+            Entendi
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
