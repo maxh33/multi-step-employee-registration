@@ -31,6 +31,8 @@ interface ColaboradoresHomeProps {
   employees: Employee[];
   onEditEmployee: (employee: Employee) => void;
   onDeleteEmployees: (employeeIds: string[]) => void;
+  departmentFilter?: string;
+  onClearDepartmentFilter?: () => void;
 }
 
 const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
@@ -38,6 +40,8 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   employees,
   onEditEmployee,
   onDeleteEmployees,
+  departmentFilter,
+  onClearDepartmentFilter,
 }) => {
   const theme = useTheme();
 
@@ -145,12 +149,17 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
 
   // Filter and sort employees based on search and sort settings
   const filteredAndSortedEmployees = useMemo(() => {
-    // First filter by search term
+    // First filter by department if department filter is active
     let filtered = employees;
     
+    if (departmentFilter) {
+      filtered = employees.filter(emp => emp.department === departmentFilter);
+    }
+    
+    // Then filter by search term
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim();
-      filtered = employees.filter(emp => 
+      filtered = filtered.filter(emp => 
         emp.firstName.toLowerCase().includes(search) ||
         emp.email.toLowerCase().includes(search) ||
         getDepartmentName(emp.department).toLowerCase().includes(search) ||
@@ -164,26 +173,76 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
     if (!sortField) return filtered;
 
     return [...filtered].sort((a, b) => {
-      let aValue = a[sortField];
-      let bValue = b[sortField];
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
 
-      // Handle name sorting (firstName only since lastName not implemented)
+      // Handle special sorting cases
       if (sortField === 'firstName') {
+        // Alphabetical sorting A-Z
         aValue = a.firstName;
         bValue = b.firstName;
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
       }
 
-      // Convert to strings for comparison
-      const aStr = String(aValue).toLowerCase();
-      const bStr = String(bValue).toLowerCase();
-
-      if (sortDirection === 'asc') {
-        return aStr.localeCompare(bStr);
-      } else {
-        return bStr.localeCompare(aStr);
+      if (sortField === 'email') {
+        // Alphabetical sorting A-Z
+        aValue = a.email;
+        bValue = b.email;
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
       }
+
+      if (sortField === 'department') {
+        // Sort by department name (resolved from ID)
+        aValue = getDepartmentName(a.department);
+        bValue = getDepartmentName(b.department);
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      }
+
+      if (sortField === 'position') {
+        // Alphabetical sorting A-Z
+        aValue = a.position || '';
+        bValue = b.position || '';
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      }
+
+      if (sortField === 'hierarchicalLevel') {
+        // Custom hierarchical ordering: Junior > Pleno > Sênior > Gerente
+        const levelOrder = { 'junior': 1, 'mid-level': 2, 'senior': 3, 'manager': 4 };
+        const aLevel = levelOrder[a.hierarchicalLevel as keyof typeof levelOrder] || 0;
+        const bLevel = levelOrder[b.hierarchicalLevel as keyof typeof levelOrder] || 0;
+        return sortDirection === 'asc' ? aLevel - bLevel : bLevel - aLevel;
+      }
+
+      if (sortField === 'responsibleManager') {
+        // Sort by manager name (resolved from ID)
+        aValue = getManagerName(a.responsibleManager || '');
+        bValue = getManagerName(b.responsibleManager || '');
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      }
+
+      if (sortField === 'baseSalary') {
+        // Numeric sorting by salary amount
+        const aSalary = a.baseSalary || 0;
+        const bSalary = b.baseSalary || 0;
+        return sortDirection === 'asc' ? aSalary - bSalary : bSalary - aSalary;
+      }
+
+      // Default string comparison for any other fields
+      const aStr = String(aValue || '').toLowerCase();
+      const bStr = String(bValue || '').toLowerCase();
+      return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
     });
-  }, [employees, searchTerm, sortField, sortDirection, departmentNames, managerNames]);
+  }, [employees, searchTerm, sortField, sortDirection, departmentNames, managerNames, departmentFilter]);
 
   // Handle column header click for sorting
   const handleSort = (field: keyof Employee) => {
@@ -331,6 +390,25 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
           </Button>
         </Box>
       </Box>
+
+      {/* Department Filter Indicator */}
+      {departmentFilter && (
+        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip
+            label={`Filtrado por: ${getDepartmentName(departmentFilter)}`}
+            onDelete={onClearDepartmentFilter}
+            color="primary"
+            variant="outlined"
+            sx={{ 
+              backgroundColor: theme.palette.primary.light + '20',
+              '& .MuiChip-label': { fontWeight: 500 }
+            }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            {filteredAndSortedEmployees.length} colaborador(es) encontrado(s)
+          </Typography>
+        </Box>
+      )}
 
       {/* Sticky Table Header */}
       <Box

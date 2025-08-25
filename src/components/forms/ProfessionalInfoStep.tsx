@@ -23,9 +23,11 @@ interface ProfessionalInfoStepProps {
   data: Partial<ProfessionalInfo>;
   errors: Record<string, string>;
   onChange: (data: Partial<ProfessionalInfo>) => void;
+  isDepartmentLocked?: boolean;
+  isHierarchicalLevelLocked?: boolean;
 }
 
-const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, errors, onChange }) => {
+const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, errors, onChange, isDepartmentLocked, isHierarchicalLevelLocked }) => {
   const theme = useTheme();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
@@ -155,7 +157,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
               value={data.department || ''}
               onChange={handleFieldChange('department')}
               displayEmpty
-              disabled={loadingDepartments || departments.length === 0}
+              disabled={loadingDepartments || departments.length === 0 || isDepartmentLocked}
               IconComponent={ExpandMoreIcon}
               sx={{
                 backgroundColor: '#fff',
@@ -277,7 +279,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
               fontSize: '14px',
             }}
           >
-            Data de Admissão *
+            Data de Admissão
           </Typography>
           <TextField
             fullWidth
@@ -324,6 +326,7 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
               value={data.hierarchicalLevel || ''}
               onChange={(e) => onChange({ ...data, hierarchicalLevel: e.target.value as any })}
               displayEmpty
+              disabled={isHierarchicalLevelLocked}
               IconComponent={ExpandMoreIcon}
               sx={{
                 backgroundColor: '#fff',

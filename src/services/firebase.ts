@@ -356,6 +356,34 @@ export const getManagerEmployees = async (): Promise<Employee[]> => {
   }
 };
 
+// Get active non-manager employee count for a department
+export const getActiveEmployeeCountByDepartment = async (departmentId: string): Promise<number> => {
+  try {
+    const departmentEmployees = await getEmployeesByDepartment(departmentId);
+    return departmentEmployees.filter(employee => 
+      employee.status === 'Ativo' && 
+      employee.hierarchicalLevel !== 'manager'
+    ).length;
+  } catch (error) {
+    console.error('Error getting active employee count by department:', error);
+    return 0;
+  }
+};
+
+// Get active non-manager employees by department (for navigation)
+export const getActiveNonManagerEmployeesByDepartment = async (departmentId: string): Promise<Employee[]> => {
+  try {
+    const departmentEmployees = await getEmployeesByDepartment(departmentId);
+    return departmentEmployees.filter(employee => 
+      employee.status === 'Ativo' && 
+      employee.hierarchicalLevel !== 'manager'
+    );
+  } catch (error) {
+    console.error('Error getting active non-manager employees by department:', error);
+    return [];
+  }
+};
+
 // Utility to repair/sync department employee counts with actual employee data
 export const syncDepartmentEmployeeCounts = async (): Promise<void> => {
   try {

@@ -343,3 +343,17 @@ export const bulkTransferEmployees = async (
     throw handleDepartmentError(error, 'bulk employee transfer');
   }
 };
+
+// Update department manager (for pending manager completion)
+export const updateDepartmentManager = async (
+  departmentId: string,
+  managerId: string
+): Promise<void> => {
+  try {
+    await updateDepartment(departmentId, {
+      responsibleManagerId: managerId,
+    });
+  } catch (error) {
+    throw handleDepartmentError(error, 'manager assignment');
+  }
+};

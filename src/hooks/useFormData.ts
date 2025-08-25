@@ -48,9 +48,10 @@ const validateStep = (step: number, formData: Partial<EmployeeFormData>): Valida
     if (!formData.professionalInfo?.position?.trim()) {
       errors['professionalInfo.position'] = 'Cargo é obrigatório';
     }
-    if (!formData.professionalInfo?.admissionDate?.trim()) {
-      errors['professionalInfo.admissionDate'] = 'Data de admissão é obrigatória';
-    }
+    // admissionDate is now optional
+    // if (!formData.professionalInfo?.admissionDate?.trim()) {
+    //   errors['professionalInfo.admissionDate'] = 'Data de admissão é obrigatória';
+    // }
     if (!formData.professionalInfo?.hierarchicalLevel) {
       errors['professionalInfo.hierarchicalLevel'] = 'Nível hierárquico é obrigatório';
     }
@@ -82,7 +83,7 @@ const calculateProgress = (formData: Partial<EmployeeFormData>): number => {
     // Professional Info (5 fields - responsibleManager is conditional)
     formData.professionalInfo?.department, // Required
     formData.professionalInfo?.position, // Required
-    formData.professionalInfo?.admissionDate, // Required
+    // formData.professionalInfo?.admissionDate, // Optional now
     formData.professionalInfo?.hierarchicalLevel, // Required
     formData.professionalInfo?.baseSalary && formData.professionalInfo.baseSalary > 0 ? 'set' : '', // Required (number > 0)
   ];

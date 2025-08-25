@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ColaboradoresHome from './components/pages/ColaboradoresHome';
 import ColaboradorForm from './components/pages/ColaboradorForm';
@@ -13,9 +13,11 @@ import {
 } from './services/firebase';
 import { initializeDepartments } from './utils/departmentSeeder';
 import { syncDepartmentEmployeeCounts } from './services/firebase';
+import { updateDepartmentManager } from './services/departments';
 
 function DashboardApp() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
@@ -80,16 +82,43 @@ function DashboardApp() {
       };
     }
 
+    // Extract department context from URL for manager linking
+    const fromDepartment = searchParams.get('fromDepartment');
+    const departmentName = searchParams.get('departmentName');
+    const role = searchParams.get('role');
+    const isCreatingDepartmentManager = fromDepartment && role === 'manager';
+
     try {
+      let newEmployeeId: string | null = null;
+      
       if (editingEmployee) {
         await updateEmployee(editingEmployee.id, formData);
       } else {
-        await createEmployee(formData);
+        newEmployeeId = await createEmployee(formData);
       }
+      
+      // If creating a manager for a department, link the manager to the department
+      if (isCreatingDepartmentManager && newEmployeeId && fromDepartment) {
+        try {
+          await updateDepartmentManager(fromDepartment, newEmployeeId);
+          console.log(`Manager ${newEmployeeId} successfully linked to department ${fromDepartment}`);
+        } catch (error) {
+          console.error('Error linking manager to department:', error);
+          // Don't fail the entire operation, just log the error
+        }
+      }
+      
       const updatedEmployees = await getAllEmployees();
       setEmployees(updatedEmployees);
 
-      navigate('/colaboradores');
+      // Navigate based on context
+      if (isCreatingDepartmentManager) {
+        // Show success message and navigate to departments
+        navigate('/departamentos');
+      } else {
+        navigate('/colaboradores');
+      }
+      
       setEditingEmployee(null);
       return { success: true };
     } catch (error) {
@@ -108,6 +137,8 @@ function DashboardApp() {
               employees={employees}
               onEditEmployee={handleEditEmployee}
               onDeleteEmployees={handleDeleteEmployees}
+              departmentFilter={searchParams.get('department') || undefined}
+              onClearDepartmentFilter={() => navigate('/colaboradores')}
             />
           }
         />
@@ -136,7 +167,14 @@ function DashboardApp() {
         <Route
           path="/departamentos"
           element={
-            <DepartmentHome onNavigateToEmployees={() => navigate('/colaboradores')} />
+            <DepartmentHome 
+              onNavigateToEmployees={(departmentId) => 
+                navigate(`/colaboradores${departmentId ? `?department=${departmentId}` : ''}`)
+              }
+              onNavigateToCreateManager={(departmentId, departmentName) =>
+                navigate(`/colaboradores/novo?fromDepartment=${departmentId}&departmentName=${encodeURIComponent(departmentName)}&role=manager`)
+              }
+            />
           }
         />
         <Route path="/" element={<Navigate to="/colaboradores" replace />} />

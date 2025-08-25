@@ -15,14 +15,18 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { Department, DepartmentFormData } from '../../types/department';
 import {
   createDepartment,
   updateDepartment,
   getDepartmentByName,
+  getAllDepartments,
 } from '../../services/departments';
-import { getAllEmployees } from '../../services/firebase';
+import { getManagerEmployees } from '../../services/firebase';
 import { Employee } from '../../types/employee';
+
+const CREATE_NEW_MANAGER = 'CREATE_NEW_MANAGER';
 
 interface DepartmentFormProps {
   open: boolean;
@@ -30,6 +34,7 @@ interface DepartmentFormProps {
   department?: Department | null;
   onClose: () => void;
   onSubmit: (isEdit: boolean, departmentName: string) => void;
+  onNavigateToCreateManager?: (departmentId: string, departmentName: string) => void;
 }
 
 const DepartmentForm: React.FC<DepartmentFormProps> = ({
@@ -38,12 +43,14 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
   department,
   onClose,
   onSubmit,
+  onNavigateToCreateManager,
 }) => {
   const [formData, setFormData] = useState<DepartmentFormData>({
     name: '',
     responsibleManagerId: '',
   });
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -66,19 +73,36 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
       setErrors({});
       setSubmitError(null);
       fetchEmployees();
+      fetchDepartments();
     }
   }, [open, mode, department]);
 
   const fetchEmployees = async () => {
     try {
       setLoadingEmployees(true);
-      const allEmployees = await getAllEmployees();
-      setEmployees(allEmployees);
+      // Only fetch manager-level employees
+      const managerEmployees = await getManagerEmployees();
+      setEmployees(managerEmployees);
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      console.error('Error fetching manager employees:', error);
     } finally {
       setLoadingEmployees(false);
     }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const allDepartments = await getAllDepartments();
+      setDepartments(allDepartments);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
+
+  // Helper function to get department name by ID
+  const getDepartmentName = (departmentId: string): string => {
+    const department = departments.find(dept => dept.id === departmentId);
+    return department ? department.name : 'Departamento não encontrado';
   };
 
   const validateForm = async (): Promise<boolean> => {
@@ -119,11 +143,28 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
       setLoading(true);
       
       if (mode === 'create') {
-        await createDepartment({
-          name: formData.name.trim(),
-          responsibleManagerId: formData.responsibleManagerId,
-        });
+        // Check if user wants to create a new manager
+        if (formData.responsibleManagerId === CREATE_NEW_MANAGER) {
+          // Create department with temporary pending manager
+          const newDepartmentId = await createDepartment({
+            name: formData.name.trim(),
+            responsibleManagerId: 'PENDING_MANAGER', // Temporary placeholder
+          });
+          
+          // Navigate to create manager with department context
+          if (onNavigateToCreateManager) {
+            onNavigateToCreateManager(newDepartmentId, formData.name.trim());
+            return; // Don't call onSubmit here, navigation handles the flow
+          }
+        } else {
+          // Standard department creation with existing manager
+          await createDepartment({
+            name: formData.name.trim(),
+            responsibleManagerId: formData.responsibleManagerId,
+          });
+        }
       } else if (department) {
+        // Edit mode - standard update (CREATE_NEW_MANAGER not applicable in edit)
         await updateDepartment(department.id, {
           name: formData.name.trim(),
           responsibleManagerId: formData.responsibleManagerId,
@@ -198,15 +239,31 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
                   <Typography sx={{ ml: 1 }}>Carregando...</Typography>
                 </MenuItem>
               ) : employees.length === 0 ? (
-                <MenuItem disabled>
-                  <Typography>Nenhum colaborador disponível</Typography>
-                </MenuItem>
+                [
+                  <MenuItem disabled key="no-employees">
+                    <Typography>Nenhum colaborador disponível</Typography>
+                  </MenuItem>,
+                  mode === 'create' && (
+                    <MenuItem key="create-manager" value={CREATE_NEW_MANAGER} sx={{ fontStyle: 'italic', color: 'primary.main' }}>
+                      <AddIcon sx={{ mr: 1, fontSize: 18 }} />
+                      Novo Gerente
+                    </MenuItem>
+                  )
+                ]
               ) : (
-                employees.map((emp) => (
-                  <MenuItem key={emp.id} value={emp.id}>
-                    {emp.firstName} - {emp.department}
-                  </MenuItem>
-                ))
+                [
+                  ...employees.map((emp) => (
+                    <MenuItem key={emp.id} value={emp.id}>
+                      {emp.firstName} - {getDepartmentName(emp.department)}
+                    </MenuItem>
+                  )),
+                  mode === 'create' && (
+                    <MenuItem key="create-manager" value={CREATE_NEW_MANAGER} sx={{ fontStyle: 'italic', color: 'primary.main', borderTop: 1, borderColor: 'divider', mt: 1 }}>
+                      <AddIcon sx={{ mr: 1, fontSize: 18 }} />
+                      Novo Gerente
+                    </MenuItem>
+                  )
+                ]
               )}
             </Select>
             {errors.responsibleManagerId && (
@@ -217,7 +274,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
           </FormControl>
 
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-            Nota: Em breve, apenas colaboradores com nível gerencial poderão ser selecionados como responsáveis.
+            Nota: Apenas colaboradores com nível gerencial podem ser selecionados como responsáveis.
           </Typography>
         </Box>
       </DialogContent>

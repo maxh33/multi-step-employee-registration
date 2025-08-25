@@ -28,22 +28,24 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { Department } from '../../types/department';
 import { getAllDepartments, deleteDepartment } from '../../services/departments';
-import { getEmployeeName } from '../../services/firebase';
+import { getEmployeeName, getActiveEmployeeCountByDepartment } from '../../services/firebase';
 import DepartmentForm from '../forms/DepartmentForm';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import Toast from '../ui/Toast';
 import { useToast } from '../../hooks/useToast';
 
 interface DepartmentHomeProps {
-  onNavigateToEmployees?: () => void;
+  onNavigateToEmployees?: (departmentFilter?: string) => void;
+  onNavigateToCreateManager?: (departmentId: string, departmentName: string) => void;
 }
 
-const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }) => {
+const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, onNavigateToCreateManager }) => {
   const theme = useTheme();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [managerNames, setManagerNames] = useState<Record<string, string>>({});
+  const [employeeCounts, setEmployeeCounts] = useState<Record<string, number>>({});
   const [selectedDepartments, setSelectedDepartments] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -76,10 +78,13 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
       const fetchedDepartments = await getAllDepartments();
       setDepartments(fetchedDepartments);
       
-      // Fetch manager names for departments that have managers
+      // Fetch manager names and employee counts for departments
       const managerNamesMap: Record<string, string> = {};
+      const employeeCountsMap: Record<string, number> = {};
+      
       await Promise.all(
         fetchedDepartments.map(async (dept) => {
+          // Fetch manager name
           if (dept.responsibleManagerId && dept.responsibleManagerId !== 'system') {
             try {
               const managerName = await getEmployeeName(dept.responsibleManagerId);
@@ -90,9 +95,20 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
               console.error(`Error fetching manager name for ${dept.responsibleManagerId}:`, error);
             }
           }
+          
+          // Fetch active non-manager employee count
+          try {
+            const activeEmployeeCount = await getActiveEmployeeCountByDepartment(dept.id);
+            employeeCountsMap[dept.id] = activeEmployeeCount;
+          } catch (error) {
+            console.error(`Error fetching employee count for department ${dept.id}:`, error);
+            employeeCountsMap[dept.id] = 0;
+          }
         })
       );
+      
       setManagerNames(managerNamesMap);
+      setEmployeeCounts(employeeCountsMap);
     } catch (err) {
       setError('Erro ao carregar departamentos');
       console.error('Error fetching departments:', err);
@@ -119,8 +135,8 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
         aValue = a.name;
         bValue = b.name;
       } else if (sortField === 'employeeIds') {
-        aValue = a.employeeIds.length;
-        bValue = b.employeeIds.length;
+        aValue = employeeCounts[a.id] || 0;
+        bValue = employeeCounts[b.id] || 0;
         
         // For numeric sorting
         if (sortDirection === 'asc') {
@@ -266,6 +282,21 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
   const handleFormSubmit = async () => {
     await fetchDepartments();
     handleFormClose();
+  };
+
+  // Handle navegação para colaboradores filtrados por departamento
+  const handleNavigateToEmployees = (departmentId: string, departmentName: string) => {
+    if (onNavigateToEmployees) {
+      // Pass department ID as filter parameter
+      onNavigateToEmployees(departmentId);
+    }
+  };
+
+  // Handle navegação para criação de gerente com contexto do departamento
+  const handleNavigateToCreateManager = (departmentId: string, departmentName: string) => {
+    if (onNavigateToCreateManager) {
+      onNavigateToCreateManager(departmentId, departmentName);
+    }
   };
 
   if (loading) {
@@ -595,10 +626,25 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                   <Chip
                     icon={<PeopleIcon />}
-                    label={dept.employeeIds.length}
+                    label={employeeCounts[dept.id] || 0}
                     size="small"
                     color="primary"
                     variant="outlined"
+                    clickable
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNavigateToEmployees(dept.id, dept.name);
+                    }}
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: theme.palette.primary.main,
+                        color: 'white',
+                        '& .MuiChip-icon': {
+                          color: 'white',
+                        },
+                      },
+                    }}
                   />
                 </Box>
 
@@ -672,6 +718,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees }
         department={editingDepartment}
         onClose={handleFormClose}
         onSubmit={handleFormSubmit}
+        onNavigateToCreateManager={handleNavigateToCreateManager}
       />
 
       {/* Delete Confirmation Dialog */}
