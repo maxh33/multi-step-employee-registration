@@ -13,6 +13,10 @@ import {
   Checkbox,
   TextField,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditIcon from '@mui/icons-material/Edit';
@@ -69,6 +73,9 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
   // Actions menu state (3-dot menu for edit/delete)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [actionsMenuEmployeeId, setActionsMenuEmployeeId] = useState<string | null>(null);
+  
+  // Delete confirmation modal state
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   // Fetch department names and manager names on component mount
   useEffect(() => {
@@ -124,6 +131,21 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
       style: 'currency',
       currency: 'BRL',
     }).format(salary);
+  };
+
+  // Utility function to format admission date
+  const formatAdmissionDate = (date?: Date | string): string => {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = date instanceof Date ? date : new Date(date);
+      return dateObj.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+      });
+    } catch {
+      return 'N/A';
+    }
   };
 
   // Utility function to get hierarchical level badge color
@@ -237,12 +259,23 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         return sortDirection === 'asc' ? aSalary - bSalary : bSalary - aSalary;
       }
 
+      if (sortField === 'admissionDate') {
+        // Chronological date sorting (handle missing dates)
+        const aDate = a.admissionDate ? new Date(a.admissionDate).getTime() : 0;
+        const bDate = b.admissionDate ? new Date(b.admissionDate).getTime() : 0;
+        return sortDirection === 'asc' ? aDate - bDate : bDate - aDate;
+      }
+
       // Default string comparison for any other fields
       const aStr = String(aValue || '').toLowerCase();
       const bStr = String(bValue || '').toLowerCase();
       return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
     });
-  }, [employees, searchTerm, sortField, sortDirection, departmentNames, managerNames, departmentFilter]);
+  }, [employees, searchTerm, sortField, sortDirection, departmentNames, managerNames, departmentFilter, getDepartmentName, getManagerName]);
+
+  // Bulk selection helpers (defined after filteredAndSortedEmployees)
+  const isAllSelected = selectedEmployees.size === filteredAndSortedEmployees.length && filteredAndSortedEmployees.length > 0;
+  const isPartiallySelected = selectedEmployees.size > 0 && selectedEmployees.size < filteredAndSortedEmployees.length;
 
   // Handle column header click for sorting
   const handleSort = (field: keyof Employee) => {
@@ -303,10 +336,40 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
 
   const handleConfirmDelete = () => {
     if (selectedEmployees.size > 0) {
+      setShowDeleteConfirmation(true);
+    }
+  };
+
+  const handleActualDelete = () => {
+    if (selectedEmployees.size > 0) {
       onDeleteEmployees(Array.from(selectedEmployees));
       setSelectedEmployees(new Set());
       setIsDeleteMode(false);
+      setShowDeleteConfirmation(false);
     }
+  };
+
+  const handleCancelConfirmation = () => {
+    setShowDeleteConfirmation(false);
+  };
+
+  // Bulk selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allEmployeeIds = new Set(filteredAndSortedEmployees.map(emp => emp.id));
+      setSelectedEmployees(allEmployeeIds);
+    } else {
+      setSelectedEmployees(new Set());
+    }
+  };
+
+  const handleBulkDelete = () => {
+    setIsDeleteMode(true);
+  };
+
+  const clearSelection = () => {
+    setSelectedEmployees(new Set());
+    setIsDeleteMode(false);
   };
 
   const handleCheckboxChange = (employeeId: string, checked: boolean) => {
@@ -391,6 +454,46 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
         </Box>
       </Box>
 
+      {/* Bulk Action Bar */}
+      {selectedEmployees.size > 0 && !isDeleteMode && (
+        <Box 
+          sx={{ 
+            mb: 2, 
+            p: 2, 
+            backgroundColor: theme.palette.primary.light + '10',
+            border: `1px solid ${theme.palette.primary.light}`,
+            borderRadius: '8px',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between' 
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.primary.main }}>
+            {selectedEmployees.size} colaborador(es) selecionado(s)
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={clearSelection}
+              sx={{ textTransform: 'none' }}
+            >
+              Limpar Seleção
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleBulkDelete}
+              sx={{ textTransform: 'none' }}
+            >
+              Excluir Selecionados
+            </Button>
+          </Box>
+        </Box>
+      )}
+
       {/* Department Filter Indicator */}
       {departmentFilter && (
         <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -431,7 +534,9 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: isDeleteMode ? '40px 1fr 1fr 1fr 80px 80px' : '1fr 1fr 1fr 80px',
+              gridTemplateColumns: isDeleteMode 
+                ? '40px 1fr 1fr 1fr 1fr 120px' 
+                : '1fr 1fr 1fr 1fr 120px',
               gap: theme.spacing(2),
               padding: theme.spacing(2, 3),
               backgroundColor: '#f4f6f8',
@@ -441,108 +546,173 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
           >
             {/* Checkbox column header - only in delete mode */}
             {isDeleteMode && (
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                {/* Empty space for checkbox column */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60px' }}>
+                <Checkbox
+                  size="small"
+                  checked={isAllSelected}
+                  indeterminate={isPartiallySelected}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  sx={{
+                    '& .MuiSvgIcon-root': { fontSize: 20 },
+                  }}
+                />
               </Box>
             )}
 
-            <Typography
-              variant="body2"
-              onClick={() => handleSort('firstName')}
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                '&:hover': {
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              Nome {getSortIndicator('firstName')}
-            </Typography>
-            <Typography
-              variant="body2"
-              onClick={() => handleSort('email')}
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                '&:hover': {
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              Email {getSortIndicator('email')}
-            </Typography>
-            <Typography
-              variant="body2"
-              onClick={() => handleSort('department')}
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                '&:hover': {
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              Departamento {getSortIndicator('department')}
-            </Typography>
-            <Typography
-              variant="body2"
-              onClick={() => handleSort('position')}
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                '&:hover': {
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              Cargo {getSortIndicator('position')}
-            </Typography>
-            <Typography
-              variant="body2"
-              onClick={() => handleSort('hierarchicalLevel')}
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                '&:hover': {
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              Nível {getSortIndicator('hierarchicalLevel')}
-            </Typography>
-            <Typography
-              variant="body2"
-              onClick={() => handleSort('responsibleManager')}
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                '&:hover': {
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              Responsável {getSortIndicator('responsibleManager')}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Column 1: Personal Identity (Nome / Email) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('firstName')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                  },
+                }}
+              >
+                Nome {getSortIndicator('firstName')}
+              </Typography>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('email')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  opacity: 0.8,
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                    opacity: 1,
+                  },
+                }}
+              >
+                Email {getSortIndicator('email')}
+              </Typography>
+            </Box>
+
+            {/* Column 2: Organizational Context (Departamento / Data de Admissão) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('department')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                  },
+                }}
+              >
+                Departamento {getSortIndicator('department')}
+              </Typography>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('admissionDate')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  opacity: 0.8,
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                    opacity: 1,
+                  },
+                }}
+              >
+                Data de Admissão {getSortIndicator('admissionDate')}
+              </Typography>
+            </Box>
+
+            {/* Column 3: Professional Role (Cargo / Nível) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('position')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                  },
+                }}
+              >
+                Cargo {getSortIndicator('position')}
+              </Typography>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('hierarchicalLevel')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  opacity: 0.8,
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                    opacity: 1,
+                  },
+                }}
+              >
+                Nível {getSortIndicator('hierarchicalLevel')}
+              </Typography>
+            </Box>
+
+            {/* Column 4: Management & Status (Status / Responsável) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('status')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                  },
+                }}
+              >
+                Status {getSortIndicator('status')}
+              </Typography>
+              <Typography
+                variant="body2"
+                onClick={() => handleSort('responsibleManager')}
+                sx={{
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  opacity: 0.8,
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                    opacity: 1,
+                  },
+                }}
+              >
+                Responsável {getSortIndicator('responsibleManager')}
+              </Typography>
+            </Box>
+
+            {/* Column 5: Compensation (Salário Base - spans both rows) */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '60px' }}>
               <Typography
                 variant="body2"
                 onClick={() => handleSort('baseSalary')}
@@ -571,22 +741,6 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 {showSalaries ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
               </IconButton>
             </Box>
-            <Typography
-              variant="body2"
-              onClick={() => handleSort('status')}
-              sx={{
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
-                fontSize: '14px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                '&:hover': {
-                  color: theme.palette.text.primary,
-                },
-              }}
-            >
-              Status {getSortIndicator('status')}
-            </Typography>
 
             {/* Actions column header - only in delete mode */}
             {isDeleteMode && (
@@ -702,8 +856,8 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: isDeleteMode
-                    ? '40px 1fr 1fr 1fr 80px 80px'
-                    : '1fr 1fr 1fr 80px',
+                    ? '40px 1fr 1fr 1fr 1fr 120px'
+                    : '1fr 1fr 1fr 1fr 120px',
                   gap: theme.spacing(2),
                   padding: theme.spacing(2, 3),
                   alignItems: 'center',
@@ -735,152 +889,168 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
                   </Box>
                 )}
 
-                {/* Nome Column */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: theme.spacing(2),
-                    position: 'relative',
-                  }}
-                >
-                  {/* 6-dot drag handle - appears on hover */}
-
-                  <Avatar
-                    alt={employee.firstName}
+                {/* Column 1: Personal Identity (Nome / Email) */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Box
                     sx={{
-                      width: 32,
-                      height: 32,
-                      backgroundColor: employee.avatar,
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: theme.spacing(2),
                     }}
                   >
-                    {employee.firstName.charAt(0).toUpperCase()}
-                  </Avatar>
+                    <Avatar
+                      alt={employee.firstName}
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        backgroundColor: employee.avatar,
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        color: '#ffffff',
+                      }}
+                    >
+                      {employee.firstName.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: theme.palette.text.primary,
+                      }}
+                    >
+                      {employee.firstName}
+                    </Typography>
+                  </Box>
                   <Typography
                     variant="body2"
                     sx={{
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      color: theme.palette.text.primary,
+                      fontSize: '13px',
+                      color: theme.palette.text.secondary,
+                      ml: 5.5, // Align with the text above (avatar width + gap)
                     }}
                   >
-                    {employee.firstName}
+                    {employee.email}
                   </Typography>
                 </Box>
 
-                {/* Email Column */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '14px',
-                    color: theme.palette.text.secondary,
-                  }}
-                >
-                  {employee.email}
-                </Typography>
-
-                {/* Departamento Column */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '14px',
-                    color: theme.palette.text.secondary,
-                  }}
-                >
-                  {getDepartmentName(employee.department)}
-                </Typography>
-
-                {/* Position Column */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '14px',
-                    color: theme.palette.text.secondary,
-                  }}
-                >
-                  {employee.position || 'N/A'}
-                </Typography>
-
-                {/* Hierarchical Level Column */}
-                {employee.hierarchicalLevel ? (
-                  <Chip
-                    label={
-                      employee.hierarchicalLevel === 'junior' ? 'Júnior' :
-                      employee.hierarchicalLevel === 'mid-level' ? 'Pleno' :
-                      employee.hierarchicalLevel === 'senior' ? 'Sênior' :
-                      employee.hierarchicalLevel === 'manager' ? 'Gerente' :
-                      employee.hierarchicalLevel
-                    }
-                    size="small"
-                    sx={{
-                      backgroundColor: getHierarchicalLevelColor(employee.hierarchicalLevel),
-                      color: getHierarchicalLevelTextColor(employee.hierarchicalLevel),
-                      fontWeight: 600,
-                      fontSize: '11px',
-                      height: '22px',
-                      minWidth: 'fit-content',
-                      width: 'fit-content',
-                      borderRadius: '4px',
-                    }}
-                  />
-                ) : (
+                {/* Column 2: Organizational Context (Departamento / Data de Admissão) */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <Typography
                     variant="body2"
                     sx={{
                       fontSize: '14px',
-                      color: theme.palette.text.disabled,
+                      color: theme.palette.text.secondary,
+                      fontWeight: 500,
                     }}
                   >
-                    N/A
+                    {getDepartmentName(employee.department)}
                   </Typography>
-                )}
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '13px',
+                      color: theme.palette.text.secondary,
+                      opacity: 0.8,
+                    }}
+                  >
+                    {formatAdmissionDate(employee.admissionDate)}
+                  </Typography>
+                </Box>
 
-                {/* Responsible Manager Column */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '14px',
-                    color: theme.palette.text.secondary,
-                  }}
-                >
-                  {employee.responsibleManager ? getManagerName(employee.responsibleManager) : 'N/A'}
-                </Typography>
+                {/* Column 3: Professional Role (Cargo / Nível) */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '14px',
+                      color: theme.palette.text.secondary,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {employee.position || 'N/A'}
+                  </Typography>
+                  <Box>
+                    {employee.hierarchicalLevel ? (
+                      <Chip
+                        label={
+                          employee.hierarchicalLevel === 'junior' ? 'Júnior' :
+                          employee.hierarchicalLevel === 'mid-level' ? 'Pleno' :
+                          employee.hierarchicalLevel === 'senior' ? 'Sênior' :
+                          employee.hierarchicalLevel === 'manager' ? 'Gerente' :
+                          employee.hierarchicalLevel
+                        }
+                        size="small"
+                        sx={{
+                          backgroundColor: getHierarchicalLevelColor(employee.hierarchicalLevel),
+                          color: getHierarchicalLevelTextColor(employee.hierarchicalLevel),
+                          fontWeight: 600,
+                          fontSize: '10px',
+                          height: '18px',
+                          minWidth: 'fit-content',
+                          width: 'fit-content',
+                          borderRadius: '3px',
+                        }}
+                      />
+                    ) : (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontSize: '13px',
+                          color: theme.palette.text.disabled,
+                          opacity: 0.6,
+                        }}
+                      >
+                        N/A
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
 
-                {/* Base Salary Column */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '14px',
-                    color: theme.palette.text.secondary,
-                    fontWeight: 500,
-                    filter: showSalaries ? 'none' : 'blur(4px)',
-                    transition: 'filter 0.2s ease',
-                  }}
-                >
-                  {showSalaries ? formatSalary(employee.baseSalary) : 'R$ •••••'}
-                </Typography>
+                {/* Column 4: Management & Status (Status / Responsável) */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Chip
+                    label={employee.status}
+                    size="small"
+                    sx={{
+                      backgroundColor: employee.status === 'Ativo' ? '#E8F5E8' : '#FDE8E8',
+                      color: employee.status === 'Ativo' ? '#2E7D32' : '#C62828',
+                      fontWeight: 600,
+                      fontSize: '12px',
+                      height: '24px',
+                      minWidth: 'fit-content',
+                      width: 'fit-content',
+                      borderRadius: '5px',
+                    }}
+                  />
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '13px',
+                      color: theme.palette.text.secondary,
+                      opacity: 0.8,
+                    }}
+                  >
+                    {employee.responsibleManager ? getManagerName(employee.responsibleManager) : 'N/A'}
+                  </Typography>
+                </Box>
 
-                {/* Status Column */}
-                <Chip
-                  label={employee.status}
-                  size="small"
-                  sx={{
-                    backgroundColor: employee.status === 'Ativo' ? '#E8F5E8' : '#FDE8E8',
-                    color: employee.status === 'Ativo' ? '#2E7D32' : '#C62828',
-                    fontWeight: 600,
-                    fontSize: '12px',
-                    height: '24px',
-                    minWidth: 'fit-content',
-                    width: 'fit-content',
-                    borderRadius: '5px',
-                  }}
-                />
-
-                {/* Empty actions column - only in delete mode to match header grid */}
-                {isDeleteMode && <Box></Box>}
+                {/* Column 5: Compensation (Salário Base) */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60px' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '14px',
+                      color: theme.palette.text.secondary,
+                      fontWeight: 500,
+                      filter: showSalaries ? 'none' : 'blur(4px)',
+                      transition: 'filter 0.2s ease',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {showSalaries ? formatSalary(employee.baseSalary) : 'R$ •••••'}
+                  </Typography>
+                </Box>
 
                 {/* 3-dot actions menu - positioned relative to entire row */}
                 <IconButton
@@ -930,6 +1100,69 @@ const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = ({
           </>
         )}
       </Paper>
+
+      {/* Enhanced Delete Confirmation Modal */}
+      <Dialog
+        open={showDeleteConfirmation}
+        onClose={handleCancelConfirmation}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Confirmar Exclusão
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            {selectedEmployees.size === 1 
+              ? `Tem certeza que deseja excluir este colaborador?`
+              : `Tem certeza que deseja excluir ${selectedEmployees.size} colaboradores?`
+            }
+          </Typography>
+          
+          {selectedEmployees.size <= 5 ? (
+            // Show individual employee names for small selections
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                Colaboradores selecionados:
+              </Typography>
+              {Array.from(selectedEmployees).map(employeeId => {
+                const employee = employees.find(emp => emp.id === employeeId);
+                return employee ? (
+                  <Typography key={employeeId} variant="body2" sx={{ ml: 1, mb: 0.5 }}>
+                    • {employee.firstName} ({employee.email})
+                  </Typography>
+                ) : null;
+              })}
+            </Box>
+          ) : (
+            // Show summary for large selections
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                {selectedEmployees.size} colaboradores serão excluídos permanentemente.
+              </Typography>
+            </Box>
+          )}
+          
+          <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 500 }}>
+            ⚠️ Esta ação não pode ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelConfirmation}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleActualDelete}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteIcon />}
+          >
+            Excluir {selectedEmployees.size === 1 ? 'Colaborador' : `${selectedEmployees.size} Colaboradores`}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -84,7 +84,6 @@ function DashboardApp() {
 
     // Extract department context from URL for manager linking
     const fromDepartment = searchParams.get('fromDepartment');
-    const departmentName = searchParams.get('departmentName');
     const role = searchParams.get('role');
     const isCreatingDepartmentManager = fromDepartment && role === 'manager';
 

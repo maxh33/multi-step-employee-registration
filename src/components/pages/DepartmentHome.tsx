@@ -121,7 +121,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
   const filteredAndSortedDepartments = useMemo(() => {
     let filtered = departments.filter(dept =>
       dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (dept.responsibleManagerId && dept.responsibleManagerId.toLowerCase().includes(searchTerm.toLowerCase()))
+      (dept.responsibleManagerId && managerNames[dept.responsibleManagerId]?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     if (!sortField) return filtered;
@@ -155,7 +155,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
         return bStr.localeCompare(aStr);
       }
     });
-  }, [departments, searchTerm, sortField, sortDirection]);
+  }, [departments, searchTerm, sortField, sortDirection, managerNames, employeeCounts]);
 
   // Sorting handlers (matching employee pattern)
   const handleSort = (field: keyof Department) => {
@@ -172,15 +172,15 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
     return sortDirection === 'asc' ? '↑' : '↓';
   };
 
-  // Selection handlers
-  const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.checked) {
-      const allIds = new Set(filteredAndSortedDepartments.map(d => d.id));
-      setSelectedDepartments(allIds);
-    } else {
-      setSelectedDepartments(new Set());
-    }
-  };
+  // Selection handlers (commented out - not currently used but may be needed for future bulk operations)
+  // const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (event.target.checked) {
+  //     const allIds = new Set(filteredAndSortedDepartments.map(d => d.id));
+  //     setSelectedDepartments(allIds);
+  //   } else {
+  //     setSelectedDepartments(new Set());
+  //   }
+  // };
 
   const handleCheckboxChange = (departmentId: string, checked: boolean) => {
     const newSelected = new Set(selectedDepartments);
