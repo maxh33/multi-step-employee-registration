@@ -118,6 +118,7 @@ settings.local.json
 /test-results/
 /playwright-report/
 /playwright/.cache/
+tests/.auth/
 
 # Coverage reports
 coverage/
