@@ -4,7 +4,6 @@
 declare global {
   interface Window {
     repairDepartmentCounts?: () => Promise<void>;
-    testFirebaseAuth?: () => Promise<void>;
   }
 }
 

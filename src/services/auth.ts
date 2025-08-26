@@ -28,13 +28,23 @@ export const authService = {
   signOut: async (): Promise<void> => {
     try {
       await signOut(auth);
-      // Clear any local storage data
-      localStorage.removeItem('formData');
       
-      // Clear only app-specific session storage items to avoid breaking other applications
-      sessionStorage.removeItem('user');
-      sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('lastAuthCheck');
+      // Clear application data with error handling
+      try {
+        // Clear form data and other localStorage items
+        localStorage.removeItem('formData');
+        localStorage.removeItem('employeeFormData');
+        localStorage.removeItem('departmentFormData');
+        
+        // Clear only app-specific session storage items to avoid breaking other applications
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('lastAuthCheck');
+        sessionStorage.removeItem('authState');
+      } catch (storageError) {
+        // Log storage cleanup errors but don't fail logout
+        console.warn('Failed to clear some storage data during logout:', storageError);
+      }
     } catch (error) {
       throw handleAuthError(error as FirebaseError);
     }
