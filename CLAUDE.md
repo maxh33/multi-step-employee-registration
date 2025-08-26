@@ -6,12 +6,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a multi-step employee registration form project using ReactJS, TypeScript, and Material UI with Firebase persistence. The project follows a comprehensive planning approach with detailed documentation for implementation.
 
+**Current Phase**: Phase 2 - Authentication & Management System  
+**Branch**: `feature/auth-and-management-system`  
 **Figma Design Reference**: https://www.figma.com/proto/r7xOsboMOQlMpEx8D5kH3a/Desafio-Flugo?node-id=2101-9297&t=ZcgP4ZVsOtCzzCIN-1
+
+## Project Status
+
+### Phase 1: Complete ✅ (Multi-step Employee Registration)
+- ✅ 2-step employee registration form (Personal Info + Professional Info)
+- ✅ Employee CRUD operations (Create, Read, Update, Delete - individual and bulk)
+- ✅ Sortable employee table with hover actions and delete mode
+- ✅ Firebase integration with comprehensive security rules
+- ✅ Material UI design system with responsive layout
+- ✅ Comprehensive Playwright E2E testing with security validation
+- ✅ Current fields: firstName, email, activateOnCreate, department
+
+### Phase 2: Complete ✅ (Authentication & Management System)
+Based on SecondStep.md requirements - All features successfully implemented:
+- ✅ **Authentication System**: Firebase Auth with JWT, login screen, route protection, custom 404
+- ✅ **Extended Employee Form**: Position, admission date, hierarchical level, responsible manager, base salary
+- ✅ **Search & Filtering**: Multi-field search by name, email, and department
+- ✅ **Department Management**: Full CRUD system with employee-department relationships
+- ✅ **Bulk Operations**: Employee bulk selection and deletion with enhanced confirmation
+- ✅ **Enhanced UI**: Double-line header layout for space efficiency and improved data organization
+- ✅ **Integrated Workflows**: Department-manager creation flow with contextual navigation
+- ✅ **Advanced Sorting**: Multi-field sorting with date, numeric, and hierarchical level support
+- ✅ **Manager Validation System**: Hierarchical level locking for managers with subordinates
+- ✅ **Self-Assignment Prevention**: Employees cannot assign themselves as responsible managers
+- ✅ **Data Integrity Tools**: Migration utilities and integrity reporting for existing data
+- ✅ **Responsive UI Design**: Mobile-first responsive tables and layouts across all pages
 
 ## Project Documentation
 
-This project includes comprehensive documentation files:
-
+### Phase 1 Documentation (Completed)
 - **`PROJECT_GUIDELINES.md`** - Complete development guidelines, Firebase free tier strategy, architecture patterns, and implementation best practices
 - **`DESIGN_REFERENCE.md`** - Template for extracting and documenting Figma design specifications (colors, typography, spacing, components)
 - **`DEVELOPMENT_CHECKLIST.md`** - Step-by-step implementation checklist with 8 phases from setup to deployment
@@ -19,16 +46,47 @@ This project includes comprehensive documentation files:
 - **`.env.example`** - Template for Firebase environment variables
 - **`.gitignore`** - Comprehensive gitignore for React TypeScript projects
 
-## Project Requirements
+### Phase 2 Documentation (Completed)
+- **`PHASE_2_REQUIREMENTS.md`** - Complete breakdown of SecondStep.md requirements with technical specifications
+- **`AUTHENTICATION_ARCHITECTURE.md`** - Simple Firebase Auth implementation guide (no SMTP/email complexity) 
+- **`DEPARTMENT_MANAGEMENT.md`** - Department system specifications with employee-department relationships
+- **`EXTENDED_EMPLOYEE_FORM.md`** - New form fields specifications and validation rules
+- **`PHASE_2_DEVELOPMENT_CHECKLIST.md`** - Detailed implementation roadmap following existing testing patterns
+- **`PHASE_2_COMPLETE_SUMMARY.md`** - Comprehensive summary of all implemented Phase 2 features
+- **`PHASE_2C_IMPLEMENTATION_SUMMARY.md`** - Department management implementation details
+- **`MANAGER_VALIDATION_SYSTEM.md`** - Manager level lock system and self-assignment prevention documentation
+- **`UI_IMPROVEMENTS_SUMMARY.md`** - UI/UX enhancements and responsive design documentation
 
-Based on the project specification in `firstSteps.md`:
+## Phase 2 Requirements (Current Implementation)
 
-- **Technology Stack**: ReactJS + TypeScript + Material UI + Firebase
-- **Architecture**: Multi-step form with validation and feedback between steps
-- **Persistence**: Firebase (Firestore recommended - 1GB storage, 50k reads/day, 20k writes/day free tier)
-- **Deployment**: Vercel (free tier recommended)
-- **Design**: Pixel-perfect implementation following Figma prototype
-- **Validation**: All form fields required with real-time validation
+Based on SecondStep.md specifications for Phase 2:
+
+### Authentication System
+- **Firebase Authentication**: JWT-based authentication (simplified - no SMTP/email verification)
+- **Login Screen**: Email/password authentication with user-friendly error handling
+- **Route Protection**: All application routes protected from unauthorized access
+- **Custom 404**: Unauthorized page for authentication failures
+
+### Extended Employee Management  
+- **Enhanced Form Fields**: Position, admission date, hierarchical level (junior/mid-level/senior/manager), responsible manager (manager-level employees only), base salary
+- **Manager Relationships**: Hierarchical structure with manager selection validation
+- **Search & Filtering**: Multi-field search by name, email, and department
+- **Maintain Existing**: All Phase 1 functionality preserved (edit, delete, bulk operations)
+
+### Department Management System
+- **Department CRUD**: Create, read, update, delete departments
+- **Department Fields**: Name, employees list, responsible manager (manager-level employee)
+- **Employee-Department Relations**: Required department for all employees, transfer capability
+- **Department Table**: Similar layout to employee table with sortable columns
+
+## Technology Stack & Architecture
+
+- **Frontend**: ReactJS + TypeScript + Material UI + React Router
+- **Authentication**: Firebase Auth (no email server complexity) 
+- **Database**: Firebase Firestore with extended security rules
+- **Deployment**: Vercel (free tier)
+- **Testing**: Playwright E2E tests following established patterns
+- **Design**: Consistent with existing Material UI implementation
 
 ## Firebase Free Tier Strategy
 
@@ -46,13 +104,21 @@ Based on the project specification in `firstSteps.md`:
 
 ## Development Setup
 
-1. Initialize React TypeScript project: `npx create-react-app . --template typescript`
-2. Install dependencies:
-   ```bash
-   npm install @mui/material @emotion/react @emotion/styled @mui/icons-material firebase
-   ```
-3. Copy `.env.example` to `.env` and configure Firebase credentials
-4. Follow the `DEVELOPMENT_CHECKLIST.md` for complete setup process
+### Phase 2 Dependencies
+```bash
+# Phase 1 dependencies (already installed)
+npm install @mui/material @emotion/react @emotion/styled @mui/icons-material firebase
+
+# Phase 2 additional dependencies
+npm install react-router-dom @types/react-router-dom
+npm install @mui/x-date-pickers react-number-format date-fns
+```
+
+### Environment Configuration
+1. Copy `.env.example` to `.env` and configure Firebase credentials
+2. Enable Firebase Authentication in Firebase Console
+3. Configure Firestore security rules for authentication
+4. Follow `PHASE_2_DEVELOPMENT_CHECKLIST.md` for complete Phase 2 setup
 
 ## Firebase Configuration
 
@@ -69,17 +135,57 @@ Never commit the `.env` file to the repository.
 
 ## Project Structure
 
+### Current Structure (Phase 1 + Phase 2)
 ```
 src/
 ├── components/
-│   ├── forms/ (StepOne, StepTwo, StepThree, StepReview)
-│   ├── ui/ (StepIndicator, FormNavigation, LoadingStates)
-│   └── layout/ (FormContainer)
-├── hooks/ (useFormData, useValidation, useFirebase)
-├── services/ (firebase.ts, validation.ts, storage.ts)
-├── types/ (employee.ts)
-└── theme/ (index.ts)
+│   ├── auth/                    # 🆕 Authentication components
+│   │   ├── LoginForm.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   └── UnauthorizedPage.tsx
+│   ├── forms/                   # Employee form components
+│   │   ├── PersonalInfoStep.tsx      # ✅ Existing
+│   │   ├── ProfessionalInfoStep.tsx  # 🔄 Extended with new fields
+│   │   ├── DepartmentForm.tsx        # 🆕 Department CRUD form
+│   │   └── fields/                   # 🆕 Individual field components
+│   │       ├── PositionField.tsx
+│   │       ├── AdmissionDateField.tsx
+│   │       ├── HierarchicalLevelField.tsx
+│   │       ├── ResponsibleManagerField.tsx
+│   │       └── BaseSalaryField.tsx
+│   ├── pages/                   # Main page components
+│   │   ├── ColaboradoresHome.tsx     # ✅ Existing (with search)
+│   │   ├── ColaboradorForm.tsx       # ✅ Existing (extended)
+│   │   └── DepartmentHome.tsx        # 🆕 Department management
+│   ├── ui/                      # Reusable UI components
+│   │   ├── StepIndicator.tsx         # ✅ Existing
+│   │   ├── SearchFilters.tsx         # 🆕 Multi-field search
+│   │   └── LoadingStates.tsx         # ✅ Existing
+│   └── layout/                  # Layout components
+│       ├── DashboardLayout.tsx       # ✅ Existing
+│       ├── Header.tsx               # 🔄 Extended with user menu
+│       └── Sidebar.tsx              # 🔄 Extended with auth info
+├── contexts/                    # 🆕 React contexts
+│   └── AuthContext.tsx          # Authentication state management
+├── hooks/                       # Custom React hooks
+│   ├── useFormData.ts               # 🔄 Extended validation
+│   ├── useAuth.ts                   # 🆕 Authentication hook
+│   └── useManagerSelection.ts       # 🆕 Manager filtering hook
+├── services/                    # External service integrations
+│   ├── firebase.ts                  # 🔄 Extended with auth & departments
+│   ├── auth.ts                      # 🆕 Authentication service
+│   └── departments.ts               # 🆕 Department CRUD service
+├── types/                       # TypeScript type definitions
+│   ├── employee.ts                  # 🔄 Extended with new fields
+│   └── department.ts                # 🆕 Department types
+└── theme/                       # Material UI theming
+    └── index.ts                     # ✅ Existing
 ```
+
+### Legend:
+- ✅ **Existing**: Phase 1 components (preserved)
+- 🔄 **Extended**: Phase 1 components with Phase 2 enhancements
+- 🆕 **New**: Phase 2 additions
 
 ## Development Commands
 
@@ -100,24 +206,49 @@ src/
 - `npm run test:e2e:ui` - Run E2E tests with interactive UI
 - `npm run test:e2e:staging` - Run E2E tests against staging environment
 
-## Key Implementation Guidelines
+## Phase 2 Implementation Guidelines
 
-- **Design Fidelity**: Follow Figma specifications exactly - extract colors, typography, spacing from design
-- **Validation**: Validate each step before progression, show real-time feedback
-- **State Management**: Use React hooks, persist form data to localStorage during navigation
-- **TypeScript**: Use strict typing for all form data and Firebase operations
-- **Performance**: Lazy load form steps, optimize Material UI bundle size
-- **Accessibility**: ARIA labels, keyboard navigation, screen reader support
-- **Testing**: Unit tests for validation, component tests for form interactions, E2E tests for complete flow
+### Code Quality Standards
+- **Preserve Existing Functionality**: All Phase 1 features must continue working
+- **Follow Established Patterns**: Use existing component patterns and testing approaches
+- **TypeScript Strict Mode**: Strong typing for all new interfaces and functions  
+- **Firebase Free Tier**: Optimize queries to stay within limits
+- **Security First**: Extend existing security rules and validation patterns
 
-## Quick Start Workflow
+### Authentication Implementation
+- **Simple Authentication**: No SMTP/email verification complexity
+- **JWT Management**: Let Firebase handle token management automatically
+- **Route Protection**: Protect all existing routes with authentication
+- **Error Handling**: User-friendly error messages following existing patterns
 
-1. Read `PROJECT_GUIDELINES.md` for comprehensive development guidance
-2. Follow `DEVELOPMENT_CHECKLIST.md` phase by phase
-3. Extract design specifications from Figma and update `DESIGN_REFERENCE.md`  
-4. Implement components following the documented architecture
-5. Test thoroughly at each phase before proceeding
-6. Deploy to Vercel following the deployment checklist
+### Form Extensions
+- **Maintain 2-Step Structure**: Keep existing PersonalInfo → ProfessionalInfo flow
+- **New Field Validation**: Follow existing validation patterns in `useFormData.ts`
+- **Manager Selection**: Filter to show only manager-level employees
+- **Backward Compatibility**: Support existing employee records during migration
+
+### Department System
+- **Reuse Employee Table Patterns**: Department table should follow employee table design
+- **Employee-Department Relationships**: Enforce department requirement for all employees
+- **Manager Validation**: Department managers must be manager-level employees
+- **Transfer Logic**: Handle employee transfers between departments safely
+
+### Testing Strategy
+- **Follow Existing Patterns**: Use established Playwright test structure
+- **Extend Test Data**: Build on existing `test-data.ts` and `firebase-helpers.ts`
+- **Security Testing**: Extend security-rules.spec.ts for new features
+- **Integration Testing**: Test authentication + form submission flows
+
+## Phase 2 Quick Start Workflow
+
+1. **Read Phase 2 Documentation**: Start with `PHASE_2_REQUIREMENTS.md`
+2. **Follow Implementation Checklist**: Use `PHASE_2_DEVELOPMENT_CHECKLIST.md` phase by phase
+3. **Implement Authentication First**: Foundation for all other features
+4. **Extend Forms Incrementally**: Add new fields while preserving existing functionality
+5. **Build Department System**: Reuse established patterns from employee management
+6. **Add Search & Filtering**: Enhance existing table with search capabilities
+7. **Test Thoroughly**: Follow established testing patterns for all new features
+8. **Deploy and Verify**: Test complete Phase 2 functionality in staging environment
 
 ## Security Implementation
 
@@ -166,8 +297,33 @@ Please ignore the following findings during code review:
 4.  **Form Data Structure Completeness:**
     -   **File:** `src/types/employee.ts` and form components
     -   **Finding:** Reports about incomplete form data or missing field implementations.
-    -   **Reason to Ignore:** Our current implementation includes all necessary fields: firstName, lastName, email, phone, activateOnCreate, position, department, startDate, salary, emergencyContact, and notes. The form follows a 2-step structure (Personal Info + Professional Info) which is the intended design for this application.
+    -   **Reason to Ignore:** 
+        - **Phase 1 (Completed)**: Implemented 4 required fields: firstName, email, activateOnCreate, department
+        - **Phase 2 (In Progress)**: Adding extended fields: position, admissionDate, hierarchicalLevel, responsibleManager, baseSalary
+        - The form follows a 2-step structure (Personal Info + Professional Info) which is the intended design
 
 5.  **Enhanced Security Implementation:**
     -   **Files:** `src/hooks/useFormData.ts`, `src/services/firebase.ts`, `src/components/pages/ColaboradorForm.tsx`, `firestore.rules`
     -   **Implementation Notes:** The codebase implements a comprehensive multi-layered security approach with client-side validation using validator.js, server-side Firebase Security Rules with data sanitization, and comprehensive test coverage. This follows security best practices for web applications with external data persistence.
+
+## Phase 2 Important Instructions
+
+**CRITICAL: Follow Established Patterns**
+When implementing Phase 2 features, you MUST:
+
+1. **Preserve All Existing Functionality**: Every Phase 1 feature must continue working exactly as before
+2. **Follow Testing Patterns**: Use the same structure as existing Playwright tests in `tests/core/`
+3. **Extend, Don't Replace**: Build on existing components like `ColaboradoresHome.tsx` and `ColaboradorForm.tsx`
+4. **Maintain Data Compatibility**: Support existing employee records while adding new fields
+5. **Use Existing Firebase Service Patterns**: Follow the patterns in `src/services/firebase.ts` for new services
+6. **Follow Security Rule Patterns**: Extend `firestore.rules` using existing validation patterns
+7. **Maintain Material UI Theme**: Use existing theme and component patterns for consistency
+
+**Phase 2 Development Priority:**
+1. Authentication System (foundation for all other features)
+2. Extended Employee Form (build on existing form structure)
+3. Department Management (reuse employee table patterns)
+4. Search & Filtering (enhance existing table functionality)
+5. Comprehensive Testing (extend existing test patterns)
+
+**When in doubt, refer to the Phase 2 documentation files for detailed specifications and follow the established patterns from Phase 1 implementation.**

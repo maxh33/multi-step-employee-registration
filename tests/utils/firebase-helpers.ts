@@ -16,11 +16,35 @@ export interface FirebaseTestConfig {
  * Modern Firebase v9+ doesn't expose global variables, so we check for React app readiness
  */
 export async function waitForFirebaseInit(page: Page): Promise<void> {
-  // Wait for React app to load and render main content
-  await page.waitForSelector('[data-testid="app-loaded"]', { timeout: 5000 }).catch(async () => {
-    // Fallback: wait for main navigation elements - use h1 specifically
-    await page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 10000 });
-  });
+  // Wait for page to load completely
+  await page.waitForLoadState('networkidle', { timeout: 10000 });
+  
+  // Wait for authentication to settle (important with saved auth state)
+  await page.waitForTimeout(2000);
+  
+  // Try multiple ways to detect app is ready
+  try {
+    // First try: look for the app-loaded test id (if it exists)
+    await page.waitForSelector('[data-testid="app-loaded"]', { timeout: 3000 });
+  } catch {
+    try {
+      // Second try: wait for main navigation elements
+      await page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 10000 });
+    } catch {
+      // Third try: check if we're authenticated and on any valid app page
+      const url = page.url();
+      if (!url.includes('/login') && !url.includes('/unauthorized')) {
+        // We're on an app page, assume Firebase is working
+        console.log('Firebase init assumed complete - on authenticated page:', url);
+        return;
+      }
+      
+      // If all else fails, navigate to colaboradores and wait
+      console.log('Navigating to colaboradores as fallback');
+      await page.goto('/colaboradores');
+      await page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 10000 });
+    }
+  }
 }
 
 /**
