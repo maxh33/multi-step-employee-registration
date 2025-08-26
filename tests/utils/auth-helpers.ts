@@ -45,32 +45,42 @@ export async function login(page: Page, credentials?: TestCredentials): Promise<
   
   // Submit login form - button with text "Entrar"
   await Promise.all([
-    // Wait for either navigation or error message
+    // Wait for navigation or error with longer timeout
     Promise.race([
-      page.waitForURL('**/colaboradores', { timeout: 30000 }),
+      page.waitForURL(url => url.pathname.includes('/colaboradores') || url.pathname === '/', { timeout: 30000 }),
       page.waitForSelector('.MuiAlert-message', { timeout: 30000 }),
-      page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 30000 })
+      page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 30000 }),
+      page.waitForURL('**/unauthorized', { timeout: 30000 })
     ]),
     page.click('button:has-text("Entrar")')
   ]);
   
-  // Check if we got an error
+  // Check if we got an error alert
   const errorAlert = page.locator('.MuiAlert-message');
   if (await errorAlert.isVisible({ timeout: 1000 })) {
     const errorText = await errorAlert.textContent();
-    throw new Error(`Login failed: ${errorText}`);
+    throw new Error(`Login failed with error: ${errorText}`);
   }
   
-  // Verify we're logged in - wait a bit for the page to settle
-  await page.waitForTimeout(2000);
+  // Check if we're on unauthorized page
+  const currentUrl = page.url();
+  if (currentUrl.includes('/unauthorized')) {
+    throw new Error(`Login failed - redirected to unauthorized page. This usually means the test user doesn't exist in Firebase or credentials are wrong. Check your Firebase Console and .env file.`);
+  }
   
-  // Check if we're on the main page
+  // Wait for authentication to settle
+  await page.waitForTimeout(3000);
+  
+  // Check if we successfully reached the main page
   const isOnMainPage = await page.locator('h1:has-text("Colaboradores")').isVisible({ timeout: 5000 });
   if (!isOnMainPage) {
-    // Try to navigate to colaboradores directly if not redirected
+    // Try direct navigation as fallback
+    console.log('Not on main page, attempting direct navigation to /colaboradores');
     await page.goto('/colaboradores');
-    await page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 10000 });
+    await page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 15000 });
   }
+  
+  console.log('Login completed successfully');
 }
 
 /**

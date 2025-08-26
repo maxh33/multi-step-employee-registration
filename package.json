@@ -39,6 +39,10 @@
     "format:check": "prettier --check src/**/*.{ts,tsx,js,jsx,json,css,md}",
     "type-check": "tsc --noEmit",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --project=smoke",
+    "test:e2e:smoke:local": "playwright test --project=smoke-local",
+    "test:e2e:core": "playwright test tests/core/authentication.spec.ts tests/core/firebase-integration.spec.ts --project=chromium",
+    "test:e2e:fast": "playwright test tests/core/authentication.spec.ts tests/core/firebase-integration.spec.ts tests/core/simple-validation.spec.ts --project=chromium",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:staging": "PLAYWRIGHT_BASE_URL=https://your-staging-url.vercel.app playwright test",
     "serve": "npx serve -s build -l 3000"

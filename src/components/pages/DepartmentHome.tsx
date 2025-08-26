@@ -132,7 +132,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
       setEmployeeCounts(employeeCountsMap);
     } catch (err) {
       setError('Erro ao carregar departamentos');
-      console.error('Error fetching departments:', err);
+      console.error('Erro ao buscar departamentos:', err);
     } finally {
       setLoading(false);
     }
@@ -479,7 +479,7 @@ const DepartmentHome: React.FC<DepartmentHomeProps> = ({ onNavigateToEmployees, 
                 },
               }}
             >
-              Nome {getSortIndicator('name')}
+                            Nome {getSortIndicator('name')}
             </Typography>
             <Typography
               variant="body2"

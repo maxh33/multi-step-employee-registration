@@ -62,7 +62,7 @@ const EmployeeTransferDialog: React.FC<EmployeeTransferDialogProps> = ({
       setDepartments(availableDepartments);
     } catch (err) {
       setError('Erro ao carregar departamentos');
-      console.error('Error fetching departments:', err);
+      console.error('Erro ao buscar departamentos:', err);
     }
   }, [currentDepartmentId]);
 
@@ -159,7 +159,7 @@ const EmployeeTransferDialog: React.FC<EmployeeTransferDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Transferir Colaboradores</DialogTitle>
+            <DialogTitle>Transferir Colaboradores</DialogTitle>
       <DialogContent>
         <Box sx={{ mt: 2 }}>
           {error && (

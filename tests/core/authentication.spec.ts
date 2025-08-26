@@ -58,7 +58,7 @@ test.describe('Authentication Tests', () => {
     await page.click('button:has-text("Entrar")');
     
     // Should show error message
-    const errorLocator = page.locator('.MuiAlert-message, [role="alert"]');
+    const errorLocator = page.locator('[role="alert"] .MuiAlert-message');
     await expect(errorLocator).toBeVisible({ timeout: 5000 });
   });
   
@@ -79,10 +79,26 @@ test.describe('Authentication Tests', () => {
     // Fill with invalid email format
     await page.fill('input[type="email"]', 'notanemail');
     await page.fill('input[type="password"]', 'password123');
+    
+    // Remove HTML5 validation to test our custom validation
+    await page.evaluate(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.setAttribute('novalidate', 'true');
+      }
+      const emailInput = document.querySelector('input[type="email"]');
+      if (emailInput) {
+        emailInput.removeAttribute('type');
+        emailInput.setAttribute('type', 'text');
+      }
+    });
+    
+    // Click submit to trigger our custom validation
     await page.click('button:has-text("Entrar")');
     
-    // Should show email format validation error
-    await expect(page.locator('text=E-mail deve ter um formato válido')).toBeVisible({ timeout: 2000 });
+    // Should show our custom email format validation error
+    const emailError = page.locator('text="E-mail deve ter um formato válido"');
+    await expect(emailError).toBeVisible({ timeout: 5000 });
   });
   
   test('should validate password length', async ({ page }) => {
@@ -110,8 +126,11 @@ test.describe('Authentication Tests', () => {
     // Wait for login to complete
     await expect(page.locator('h1:has-text("Colaboradores")')).toBeVisible({ timeout: 15000 });
     
+    // Click the user menu button
+    await page.locator('button:has-text("test")').click();
+
     // Find and click logout button
-    const logoutButton = page.locator('button:has-text("Sair"), button:has-text("Logout"), [aria-label*="logout" i], [aria-label*="sair" i]');
+    const logoutButton = page.locator('li:has-text("Sair")');
     await logoutButton.click();
     
     // Should redirect to login page

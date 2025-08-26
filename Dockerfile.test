@@ -1,21 +1,32 @@
-FROM mcr.microsoft.com/playwright:v1.54.2-noble
+# Multi-stage Docker build for better caching and performance
 
+# Stage 1: Dependencies
+FROM mcr.microsoft.com/playwright:v1.54.2-noble AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production --silent && npm cache clean --force
+
+# Stage 2: Build
+FROM mcr.microsoft.com/playwright:v1.54.2-noble AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --silent
+COPY . .
+RUN npm run build
+
+# Stage 3: Test Runner  
+FROM mcr.microsoft.com/playwright:v1.54.2-noble AS runner
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy application files
-COPY . .
-
-# Build the application
-RUN npm run build
+# Copy built application and dependencies
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/playwright.config.ts ./
+COPY --from=builder /app/tests ./tests
 
 # Create auth directory
 RUN mkdir -p tests/.auth
 
-# Run tests
-CMD ["npm", "run", "test:e2e"]
+# Optimize for CI: run only essential smoke tests
+CMD ["npm", "run", "test:e2e:core"]

@@ -289,7 +289,7 @@ export const transferEmployeeToDepartment = async (
     // Get target department
     const newDepartment = await getDepartment(newDepartmentId);
     if (!newDepartment) {
-      throw new Error('Target department not found');
+      throw new Error('Departamento de destino não encontrado');
     }
 
     // For now, simplified transfer until we have extended employee types
@@ -319,7 +319,7 @@ export const bulkTransferEmployees = async (
     // Validate target department
     const targetDepartment = await getDepartment(targetDepartmentId);
     if (!targetDepartment) {
-      throw new Error('Target department not found');
+      throw new Error('Departamento de destino não encontrado');
     }
 
     // Update employees' department references

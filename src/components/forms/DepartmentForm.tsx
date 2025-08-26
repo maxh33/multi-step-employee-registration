@@ -95,7 +95,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
       const allDepartments = await getAllDepartments();
       setDepartments(allDepartments);
     } catch (error) {
-      console.error('Error fetching departments:', error);
+      console.error('Erro ao buscar departamentos:', error);
     }
   };
 
