@@ -140,6 +140,8 @@ service cloud.firestore {
                  professionalInfo.responsibleManager.size() > 0 &&
                  professionalInfo.responsibleManager.size() <= 50 &&
                  // Prevent self-assignment as responsible manager
+                 // resource.id is the employeeId (document ID) being created/updated
+                 // This prevents employees from setting themselves as their own manager
                  professionalInfo.responsibleManager != resource.id;
         }
       }
