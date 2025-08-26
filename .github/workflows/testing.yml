@@ -41,6 +41,9 @@ jobs:
           REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.STAGING_REACT_APP_FIREBASE_STORAGE_BUCKET }}
           REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.STAGING_REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
           REACT_APP_FIREBASE_APP_ID: ${{ secrets.STAGING_REACT_APP_FIREBASE_APP_ID }}
+          # Test credentials
+          REACT_APP_TEST_USER_EMAIL: ${{ secrets.REACT_APP_TEST_USER_EMAIL }}
+          REACT_APP_TEST_USER_PASSWORD: ${{ secrets.REACT_APP_TEST_USER_PASSWORD }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -55,6 +58,12 @@ jobs:
           REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.STAGING_REACT_APP_FIREBASE_STORAGE_BUCKET }}
           REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.STAGING_REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
           REACT_APP_FIREBASE_APP_ID: ${{ secrets.STAGING_REACT_APP_FIREBASE_APP_ID }}
+          # Test credentials - IMPORTANT: These must be set in GitHub Secrets
+          REACT_APP_TEST_USER_EMAIL: ${{ secrets.REACT_APP_TEST_USER_EMAIL }}
+          REACT_APP_TEST_USER_PASSWORD: ${{ secrets.REACT_APP_TEST_USER_PASSWORD }}
+          # Alternative env var names for compatibility
+          TEST_USER_EMAIL: ${{ secrets.REACT_APP_TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.REACT_APP_TEST_USER_PASSWORD }}
           PLAYWRIGHT_BASE_URL: http://localhost:3000
 
       - name: Upload test results

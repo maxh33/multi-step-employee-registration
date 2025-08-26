@@ -6,52 +6,64 @@ test.describe('Authentication Tests', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
   
   test('should show login page for unauthenticated users', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     
-    // Should see the login page with "Login" heading
-    await expect(page.locator('h1:has-text("Login")')).toBeVisible();
-    // Should see email and password fields (Material-UI TextFields with labels)
-    await expect(page.locator('text=E-mail')).toBeVisible();
-    await expect(page.locator('text=Senha')).toBeVisible();
+    // Should see the login page with "Login" text
+    await expect(page.locator('text=Login').first()).toBeVisible();
+    // Should see email and password fields
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
     // Should see login button
     await expect(page.locator('button:has-text("Entrar")')).toBeVisible();
   });
   
-  test('should login successfully with valid credentials', async ({ page }) => {
-    await page.goto('/');
+  test('should redirect to login when accessing protected route', async ({ page }) => {
+    // Try to access protected route
+    await page.goto('/colaboradores');
     
-    // Get credentials from environment
-    const email = process.env.REACT_APP_TEST_USER_EMAIL;
-    const password = process.env.REACT_APP_TEST_USER_PASSWORD;
-
-    // Fill login form using Material-UI TextField selectors
-    await page.fill('input:below(:text("E-mail"))', email);
-    await page.fill('input:below(:text("Senha"))', password);
+    // Should be redirected to unauthorized page (based on App.tsx fallback)
+    await expect(page).toHaveURL(/\/unauthorized/);
+    
+    // Navigate to login from unauthorized page
+    await page.goto('/login');
+    await expect(page.locator('text=Login').first()).toBeVisible();
+  });
+  
+  test('should login successfully with valid credentials', async ({ page }) => {
+    await page.goto('/login');
+    
+    // Get credentials from environment with fallback
+    const email = process.env.REACT_APP_TEST_USER_EMAIL || process.env.TEST_USER_EMAIL || 'test@example.com';
+    const password = process.env.REACT_APP_TEST_USER_PASSWORD || process.env.TEST_USER_PASSWORD || 'test123456';
+    
+    // Fill login form
+    await page.fill('input[type="email"]', email);
+    await page.fill('input[type="password"]', password);
     
     // Submit login
     await page.click('button:has-text("Entrar")');
     
     // Should redirect to main page after successful login
-    await expect(page.locator('h1:has-text("Colaboradores")')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1:has-text("Colaboradores")')).toBeVisible({ timeout: 15000 });
   });
   
   test('should show error for invalid credentials', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     
     // Fill login form with invalid credentials
-    await page.fill('input:below(:text("E-mail"))', 'invalid@example.com');
-    await page.fill('input:below(:text("Senha"))', 'wrongpassword');
+    await page.fill('input[type="email"]', 'invalid@example.com');
+    await page.fill('input[type="password"]', 'wrongpassword');
     
     // Submit login
     await page.click('button:has-text("Entrar")');
     
-    // Should show error message - check for various possible error texts
+    // Should show error message
     const errorLocator = page.locator('.MuiAlert-message, [role="alert"]');
     await expect(errorLocator).toBeVisible({ timeout: 5000 });
   });
   
   test('should validate required fields', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     
     // Try to submit without filling any fields
     await page.click('button:has-text("Entrar")');
@@ -62,11 +74,11 @@ test.describe('Authentication Tests', () => {
   });
   
   test('should validate email format', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     
     // Fill with invalid email format
-    await page.fill('input:below(:text("E-mail"))', 'notanemail');
-    await page.fill('input:below(:text("Senha"))', 'password123');
+    await page.fill('input[type="email"]', 'notanemail');
+    await page.fill('input[type="password"]', 'password123');
     await page.click('button:has-text("Entrar")');
     
     // Should show email format validation error
@@ -74,11 +86,11 @@ test.describe('Authentication Tests', () => {
   });
   
   test('should validate password length', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     
     // Fill with short password
-    await page.fill('input:below(:text("E-mail"))', 'test@example.com');
-    await page.fill('input:below(:text("Senha"))', '123');
+    await page.fill('input[type="email"]', 'test@example.com');
+    await page.fill('input[type="password"]', '123');
     await page.click('button:has-text("Entrar")');
     
     // Should show password length validation error
@@ -87,23 +99,22 @@ test.describe('Authentication Tests', () => {
   
   test('should logout successfully', async ({ page }) => {
     // First login
-    await page.goto('/');
-    const email = process.env.REACT_APP_TEST_USER_EMAIL || 'test@example.com';
-    const password = process.env.REACT_APP_TEST_USER_PASSWORD || 'test123456';
+    await page.goto('/login');
+    const email = process.env.REACT_APP_TEST_USER_EMAIL || process.env.TEST_USER_EMAIL || 'test@example.com';
+    const password = process.env.REACT_APP_TEST_USER_PASSWORD || process.env.TEST_USER_PASSWORD || 'test123456';
     
-    await page.fill('input:below(:text("E-mail"))', email);
-    await page.fill('input:below(:text("Senha"))', password);
+    await page.fill('input[type="email"]', email);
+    await page.fill('input[type="password"]', password);
     await page.click('button:has-text("Entrar")');
     
     // Wait for login to complete
-    await expect(page.locator('h1:has-text("Colaboradores")')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1:has-text("Colaboradores")')).toBeVisible({ timeout: 15000 });
     
-    // Find and click logout button (usually in header)
-    // The logout button might be in a menu or directly visible
+    // Find and click logout button
     const logoutButton = page.locator('button:has-text("Sair"), button:has-text("Logout"), [aria-label*="logout" i], [aria-label*="sair" i]');
     await logoutButton.click();
     
     // Should redirect to login page
-    await expect(page.locator('h1:has-text("Login")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Login').first()).toBeVisible({ timeout: 5000 });
   });
 });

@@ -1,0 +1,21 @@
+FROM mcr.microsoft.com/playwright:v1.54.2-noble
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy application files
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Create auth directory
+RUN mkdir -p tests/.auth
+
+# Run tests
+CMD ["npm", "run", "test:e2e"]

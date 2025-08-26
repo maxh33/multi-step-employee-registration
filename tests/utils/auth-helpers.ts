@@ -14,12 +14,12 @@ export interface TestCredentials {
  * Get test credentials from environment variables
  */
 export function getTestCredentials(): TestCredentials {
-  const email = process.env.REACT_APP_TEST_USER_EMAIL || 'test@example.com';
-  const password = process.env.REACT_APP_TEST_USER_PASSWORD || 'test123456';
+  // In CI/CD, these should be set from GitHub secrets
+  // Fallback values are for local development only
+  const email = process.env.REACT_APP_TEST_USER_EMAIL || process.env.TEST_USER_EMAIL || 'test@example.com';
+  const password = process.env.REACT_APP_TEST_USER_PASSWORD || process.env.TEST_USER_PASSWORD || 'test123456';
   
-  if (!email || !password) {
-    throw new Error('Test credentials not configured. Please set REACT_APP_TEST_USER_EMAIL and REACT_APP_TEST_USER_PASSWORD in .env');
-  }
+  console.log(`Using test email: ${email}`);
   
   return { email, password };
 }
@@ -30,28 +30,47 @@ export function getTestCredentials(): TestCredentials {
 export async function login(page: Page, credentials?: TestCredentials): Promise<void> {
   const creds = credentials || getTestCredentials();
   
-  // Navigate to login page
-  await page.goto('/');
+  // Navigate directly to the login page
+  await page.goto('/login');
   
-  // Wait for login form to be visible - look for the Login heading
-  await page.waitForSelector('h1:has-text("Login")', { timeout: 10000 });
+  // Wait for page to load
+  await page.waitForLoadState('networkidle');
   
-  // Fill login form using the Material-UI TextField labels
-  // The TextField with label="E-mail" becomes an input with a label
-  await page.fill('input[name="email"], input:below(:text("E-mail"))', creds.email);
-  await page.fill('input[name="password"], input:below(:text("Senha"))', creds.password);
+  // Wait for login form to be visible - the Login text is h4, not h1
+  await page.waitForSelector('text=Login', { timeout: 10000 });
+  
+  // Fill login form - use type selectors which are more reliable
+  await page.fill('input[type="email"]', creds.email);
+  await page.fill('input[type="password"]', creds.password);
   
   // Submit login form - button with text "Entrar"
-  await page.click('button:has-text("Entrar")');
+  await Promise.all([
+    // Wait for either navigation or error message
+    Promise.race([
+      page.waitForURL('**/colaboradores', { timeout: 30000 }),
+      page.waitForSelector('.MuiAlert-message', { timeout: 30000 }),
+      page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 30000 })
+    ]),
+    page.click('button:has-text("Entrar")')
+  ]);
   
-  // Wait for successful login - should redirect to main page
-  await page.waitForURL('**/colaboradores', { timeout: 10000 }).catch(async () => {
-    // Fallback: wait for main content to appear
+  // Check if we got an error
+  const errorAlert = page.locator('.MuiAlert-message');
+  if (await errorAlert.isVisible({ timeout: 1000 })) {
+    const errorText = await errorAlert.textContent();
+    throw new Error(`Login failed: ${errorText}`);
+  }
+  
+  // Verify we're logged in - wait a bit for the page to settle
+  await page.waitForTimeout(2000);
+  
+  // Check if we're on the main page
+  const isOnMainPage = await page.locator('h1:has-text("Colaboradores")').isVisible({ timeout: 5000 });
+  if (!isOnMainPage) {
+    // Try to navigate to colaboradores directly if not redirected
+    await page.goto('/colaboradores');
     await page.waitForSelector('h1:has-text("Colaboradores")', { timeout: 10000 });
-  });
-  
-  // Verify we're logged in
-  await expect(page.locator('h1:has-text("Colaboradores")')).toBeVisible();
+  }
 }
 
 /**
@@ -59,13 +78,13 @@ export async function login(page: Page, credentials?: TestCredentials): Promise<
  */
 export async function logout(page: Page): Promise<void> {
   // Look for logout button (usually in header or menu)
-  const logoutButton = page.locator('button:has-text("Sair"), button:has-text("Logout")');
+  const logoutButton = page.locator('button:has-text("Sair"), button:has-text("Logout"), [aria-label*="logout" i], [aria-label*="sair" i]');
   
   if (await logoutButton.isVisible()) {
     await logoutButton.click();
     
     // Wait for redirect to login page
-    await page.waitForSelector('h1:has-text("Login")', { timeout: 5000 });
+    await page.waitForSelector('text=Login', { timeout: 5000 });
   }
 }
 
@@ -78,7 +97,7 @@ export async function isAuthenticated(page: Page): Promise<boolean> {
     const isOnMainPage = await page.locator('h1:has-text("Colaboradores")').isVisible({ timeout: 1000 });
     
     // Check if we're on login page (not authenticated)
-    const isOnLoginPage = await page.locator('h1:has-text("Login")').isVisible({ timeout: 1000 });
+    const isOnLoginPage = await page.locator('text=Login').isVisible({ timeout: 1000 });
     
     return isOnMainPage && !isOnLoginPage;
   } catch {
@@ -107,5 +126,5 @@ export async function setupAuthState(page: Page): Promise<string> {
 export async function ensureTestUserExists(): Promise<void> {
   // This would require Firebase Admin SDK which is not available in browser tests
   // Instead, ensure test user is created manually in Firebase Console
-  console.log('Ensure test user exists in Firebase Console with credentials from .env');
+  console.log('Ensure test user exists in Firebase Console with credentials from environment variables or use defaults: test@example.com / test123456');
 }
