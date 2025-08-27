@@ -1,5 +1,8 @@
 // Employee form data interfaces - Aligned with actual frontend implementation
 
+// Hierarchical level type
+export type HierarchicalLevel = 'junior' | 'mid-level' | 'senior' | 'manager';
+
 // PersonalInfo: Only fields actually implemented in PersonalInfoStep.tsx
 export interface PersonalInfo {
   firstName: string;
@@ -12,7 +15,7 @@ export interface ProfessionalInfo {
   department: string;
   position: string;
   admissionDate: string; // ISO date string
-  hierarchicalLevel: 'junior' | 'mid-level' | 'senior' | 'manager';
+  hierarchicalLevel: HierarchicalLevel;
   responsibleManager?: string; // Employee ID, optional for managers
   baseSalary: number;
 }
@@ -52,7 +55,7 @@ export interface Employee {
   department: string;
   position?: string;
   admissionDate?: Date;
-  hierarchicalLevel?: 'junior' | 'mid-level' | 'senior' | 'manager';
+  hierarchicalLevel?: HierarchicalLevel;
   responsibleManager?: string;
   baseSalary?: number;
   status: 'Ativo' | 'Inativo';
