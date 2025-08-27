@@ -16,9 +16,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onNavigateHome,
 }) => {
   const theme = useTheme();
-  const sidebarWidth = 280;
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
+  // Responsive sidebar width
+  const getSidebarWidth = () => {
+    if (isMobile) return 280; // Full width on mobile (temporary drawer)
+    if (isTablet) return 240; // Reduced width on tablet
+    return 280; // Full width on desktop
+  };
+  
+  const sidebarWidth = getSidebarWidth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);

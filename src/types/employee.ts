@@ -7,9 +7,14 @@ export interface PersonalInfo {
   activateOnCreate: boolean; // Required toggle field for "Ativar ao criar"
 }
 
-// ProfessionalInfo: Only fields actually implemented in ProfessionalInfoStep.tsx
+// ProfessionalInfo: Extended with new fields
 export interface ProfessionalInfo {
   department: string;
+  position: string;
+  admissionDate: string; // ISO date string
+  hierarchicalLevel: 'junior' | 'mid-level' | 'senior' | 'manager';
+  responsibleManager?: string; // Employee ID, optional for managers
+  baseSalary: number;
 }
 
 // EmployeeFormData: 2-step form with only implemented fields
@@ -39,16 +44,20 @@ export interface ValidationResult {
   errors: Record<string, string>;
 }
 
-// Employee display data for the list - Only implemented fields
+// Employee display data for the list - Extended with new fields
 export interface Employee {
   id: string;
   firstName: string;
   email: string;
   department: string;
+  position?: string;
+  admissionDate?: Date;
+  hierarchicalLevel?: 'junior' | 'mid-level' | 'senior' | 'manager';
+  responsibleManager?: string;
+  baseSalary?: number;
   status: 'Ativo' | 'Inativo';
   avatar: string; // Avatar color
   createdAt: Date;
-  // Note: lastName, phone, position removed as not implemented in frontend
 }
 
 // Firebase operations interface - simplified for our 4-field implementation

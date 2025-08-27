@@ -2,18 +2,19 @@ import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
   collection,
-  addDoc,
   updateDoc,
   doc,
   getDoc,
   getDocs,
-  deleteDoc,
   query,
   orderBy,
+  where,
   Timestamp,
   QueryDocumentSnapshot,
   DocumentData,
+  writeBatch,
 } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { Employee, EmployeeFormData } from '../types/employee';
 
 // Firebase configuration from environment variables
@@ -29,11 +30,12 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 // Collection reference
 const employeesCollectionRef = collection(db, 'employees');
 
-// Helper to convert Firestore DocumentData to Employee type - 4 fields only
+// Helper to convert Firestore DocumentData to Employee type - Extended with new fields
 const convertDocToEmployee = (doc: QueryDocumentSnapshot<DocumentData>): Employee => {
   const data = doc.data();
   return {
@@ -41,6 +43,11 @@ const convertDocToEmployee = (doc: QueryDocumentSnapshot<DocumentData>): Employe
     firstName: data.personalInfo.firstName,
     email: data.personalInfo.email,
     department: data.professionalInfo.department,
+    position: data.professionalInfo?.position,
+    admissionDate: data.professionalInfo?.admissionDate ? new Date(data.professionalInfo.admissionDate) : undefined,
+    hierarchicalLevel: data.professionalInfo?.hierarchicalLevel,
+    responsibleManager: data.professionalInfo?.responsibleManager,
+    baseSalary: data.professionalInfo?.baseSalary,
     status: data.status,
     avatar: data.avatar || '#CCCCCC',
     createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
@@ -96,8 +103,37 @@ export const createEmployee = async (data: EmployeeFormData): Promise<string> =>
       avatar: '#FF6B6B',
       createdAt: Timestamp.now(),
     };
-    const docRef = await addDoc(employeesCollectionRef, newEmployeeData);
-    return docRef.id;
+    
+    // Use batch operation for atomic employee creation + department sync
+    const batch = writeBatch(db);
+    
+    // Create employee document
+    const employeeRef = doc(employeesCollectionRef);
+    batch.set(employeeRef, newEmployeeData);
+    
+    // Update department's employeeIds array if department is specified
+    if (data.professionalInfo.department) {
+      const departmentRef = doc(db, 'departments', data.professionalInfo.department);
+      
+      // Get current department data to update employeeIds
+      const departmentSnap = await getDoc(departmentRef);
+      if (departmentSnap.exists()) {
+        const departmentData = departmentSnap.data();
+        const currentEmployeeIds = departmentData.employeeIds || [];
+        
+        // Add new employee ID to department's employeeIds array
+        if (!currentEmployeeIds.includes(employeeRef.id)) {
+          batch.update(departmentRef, {
+            employeeIds: [...currentEmployeeIds, employeeRef.id],
+            updatedAt: Timestamp.now(),
+          });
+        }
+      }
+    }
+    
+    // Commit the batch operation
+    await batch.commit();
+    return employeeRef.id;
   } catch (error) {
     throw handleFirebaseError(error, 'criação de colaborador');
   }
@@ -109,6 +145,17 @@ export const updateEmployee = async (
 ): Promise<void> => {
   try {
     const employeeDocRef = doc(db, 'employees', id);
+    
+    // Get current employee data to check for department changes
+    const currentEmployeeSnap = await getDoc(employeeDocRef);
+    if (!currentEmployeeSnap.exists()) {
+      throw new Error('Employee not found');
+    }
+    
+    const currentEmployee = currentEmployeeSnap.data();
+    const currentDepartmentId = currentEmployee.professionalInfo?.department;
+    const newDepartmentId = data.professionalInfo?.department;
+    
     const updateData: Partial<EmployeeFormData & { status: string; avatar: string }> = {};
 
     if (data.personalInfo) {
@@ -119,7 +166,49 @@ export const updateEmployee = async (
       updateData.professionalInfo = data.professionalInfo; // department
     }
 
-    await updateDoc(employeeDocRef, updateData);
+    // Use batch operation for atomic employee update + department sync
+    const batch = writeBatch(db);
+    
+    // Update employee document
+    batch.update(employeeDocRef, updateData);
+    
+    // Handle department changes
+    if (newDepartmentId && currentDepartmentId !== newDepartmentId) {
+      // Remove from old department if exists
+      if (currentDepartmentId) {
+        const oldDepartmentRef = doc(db, 'departments', currentDepartmentId);
+        const oldDepartmentSnap = await getDoc(oldDepartmentRef);
+        if (oldDepartmentSnap.exists()) {
+          const oldDepartmentData = oldDepartmentSnap.data();
+          const oldEmployeeIds = oldDepartmentData.employeeIds || [];
+          const updatedOldEmployeeIds = oldEmployeeIds.filter((empId: string) => empId !== id);
+          
+          batch.update(oldDepartmentRef, {
+            employeeIds: updatedOldEmployeeIds,
+            updatedAt: Timestamp.now(),
+          });
+        }
+      }
+      
+      // Add to new department
+      const newDepartmentRef = doc(db, 'departments', newDepartmentId);
+      const newDepartmentSnap = await getDoc(newDepartmentRef);
+      if (newDepartmentSnap.exists()) {
+        const newDepartmentData = newDepartmentSnap.data();
+        const newEmployeeIds = newDepartmentData.employeeIds || [];
+        
+        // Add employee ID if not already present
+        if (!newEmployeeIds.includes(id)) {
+          batch.update(newDepartmentRef, {
+            employeeIds: [...newEmployeeIds, id],
+            updatedAt: Timestamp.now(),
+          });
+        }
+      }
+    }
+    
+    // Commit the batch operation
+    await batch.commit();
   } catch (error) {
     throw handleFirebaseError(error, 'atualização de colaborador');
   }
@@ -153,8 +242,410 @@ export const getAllEmployees = async (): Promise<Employee[]> => {
 export const deleteEmployee = async (id: string): Promise<void> => {
   try {
     const employeeDocRef = doc(db, 'employees', id);
-    await deleteDoc(employeeDocRef);
+    
+    // Get employee data to find which department to remove from
+    const employeeSnap = await getDoc(employeeDocRef);
+    if (!employeeSnap.exists()) {
+      throw new Error('Employee not found');
+    }
+    
+    const employeeData = employeeSnap.data();
+    const departmentId = employeeData.professionalInfo?.department;
+    
+    // Use batch operation for atomic employee deletion + department sync
+    const batch = writeBatch(db);
+    
+    // Delete employee document
+    batch.delete(employeeDocRef);
+    
+    // Remove from department's employeeIds array if department exists
+    if (departmentId) {
+      const departmentRef = doc(db, 'departments', departmentId);
+      const departmentSnap = await getDoc(departmentRef);
+      if (departmentSnap.exists()) {
+        const departmentData = departmentSnap.data();
+        const currentEmployeeIds = departmentData.employeeIds || [];
+        const updatedEmployeeIds = currentEmployeeIds.filter((empId: string) => empId !== id);
+        
+        batch.update(departmentRef, {
+          employeeIds: updatedEmployeeIds,
+          updatedAt: Timestamp.now(),
+        });
+      }
+    }
+    
+    // Commit the batch operation
+    await batch.commit();
   } catch (error) {
     throw handleFirebaseError(error, 'exclusão de colaborador');
+  }
+};
+
+
+// Department-related employee operations (Phase 2C)
+export const updateEmployeeDepartment = async (
+  employeeId: string,
+  departmentId: string
+): Promise<void> => {
+  try {
+    const employeeRef = doc(db, 'employees', employeeId);
+    const employeeDoc = await getDoc(employeeRef);
+    
+    if (!employeeDoc.exists()) {
+      throw new Error('Employee not found');
+    }
+    
+    // Update the department in professional info
+    await updateDoc(employeeRef, {
+      'professionalInfo.department': departmentId,
+      'departmentId': departmentId, // Add department reference for Phase 2C
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error('Error updating employee department:', error);
+    throw error;
+  }
+};
+
+// Get employees by department
+export const getEmployeesByDepartment = async (
+  departmentId: string
+): Promise<Employee[]> => {
+  try {
+    const q = query(
+      employeesCollectionRef,
+      orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    
+    // Filter by department (until we have proper indexing)
+    return querySnapshot.docs
+      .map(convertDocToEmployee)
+      .filter(emp => emp.department === departmentId);
+  } catch (error) {
+    console.error('Error fetching employees by department:', error);
+    throw error;
+  }
+};
+
+// Utility function to get employee name by ID (for manager display)
+export const getEmployeeName = async (employeeId: string): Promise<string | null> => {
+  try {
+    const employee = await getEmployee(employeeId);
+    return employee ? employee.firstName : null;
+  } catch (error) {
+    console.error('Error fetching employee name:', error);
+    return null;
+  }
+};
+
+// Get employees with manager hierarchical level for selection
+export const getManagerEmployees = async (excludeEmployeeId?: string): Promise<Employee[]> => {
+  try {
+    const allEmployees = await getAllEmployees();
+    return allEmployees.filter(employee => 
+      employee.hierarchicalLevel === 'manager' &&
+      employee.status === 'Ativo' && // Only active managers
+      (!excludeEmployeeId || employee.id !== excludeEmployeeId) // Exclude specified employee
+    );
+  } catch (error) {
+    console.error('Error fetching manager employees:', error);
+    throw error;
+  }
+};
+
+// Get active non-manager employee count for a department
+export const getActiveEmployeeCountByDepartment = async (departmentId: string): Promise<number> => {
+  try {
+    const departmentEmployees = await getEmployeesByDepartment(departmentId);
+    return departmentEmployees.filter(employee => 
+      employee.status === 'Ativo' && 
+      employee.hierarchicalLevel !== 'manager'
+    ).length;
+  } catch (error) {
+    console.error('Error getting active employee count by department:', error);
+    return 0;
+  }
+};
+
+// Get active non-manager employees by department (for navigation)
+export const getActiveNonManagerEmployeesByDepartment = async (departmentId: string): Promise<Employee[]> => {
+  try {
+    const departmentEmployees = await getEmployeesByDepartment(departmentId);
+    return departmentEmployees.filter(employee => 
+      employee.status === 'Ativo' && 
+      employee.hierarchicalLevel !== 'manager'
+    );
+  } catch (error) {
+    console.error('Error getting active non-manager employees by department:', error);
+    return [];
+  }
+};
+
+// Helper function to check if a manager has subordinates
+export const checkManagerHasSubordinates = async (managerId: string): Promise<boolean> => {
+  try {
+    const allEmployees = await getAllEmployees();
+    return allEmployees.some(employee => 
+      employee.responsibleManager === managerId && 
+      employee.status === 'Ativo'
+    );
+  } catch (error) {
+    console.error('Error checking manager subordinates:', error);
+    throw handleFirebaseError(error, 'verificação de subordinados');
+  }
+};
+
+// Helper function to validate hierarchical level changes
+export const validateHierarchicalLevelChange = async (
+  employeeId: string, 
+  currentLevel: string | undefined,
+  newLevel: string
+): Promise<{ isValid: boolean; reason?: string }> => {
+  try {
+    // If changing from manager to non-manager level, check for subordinates
+    if (currentLevel === 'manager' && newLevel !== 'manager') {
+      const hasSubordinates = await checkManagerHasSubordinates(employeeId);
+      if (hasSubordinates) {
+        return {
+          isValid: false,
+          reason: 'Este gerente possui subordinados ativos. Transfira os subordinados para outro gerente antes de alterar o nível hierárquico.'
+        };
+      }
+    }
+    
+    return { isValid: true };
+  } catch (error) {
+    console.error('Error validating hierarchical level change:', error);
+    throw handleFirebaseError(error, 'validação de mudança de nível hierárquico');
+  }
+};
+
+// Data migration utility to fix inconsistent hierarchical relationships
+export const fixInconsistentManagerRelationships = async (): Promise<{
+  totalChecked: number;
+  issuesFound: number;
+  issuesFixed: number;
+  errors: string[];
+}> => {
+  try {
+    console.log('Starting manager relationship consistency check...');
+    
+    const allEmployees = await getAllEmployees();
+    const issues: Array<{ employee: Employee; issue: string; fix?: string }> = [];
+    const errors: string[] = [];
+    let fixedCount = 0;
+
+    // Check each employee for consistency issues
+    for (const employee of allEmployees) {
+      try {
+        // Issue 1: Manager-level employee has a responsible manager
+        if (employee.hierarchicalLevel === 'manager' && employee.responsibleManager) {
+          issues.push({
+            employee,
+            issue: `Manager "${employee.firstName}" has a responsible manager assigned`,
+            fix: 'Remove responsible manager',
+          });
+        }
+
+        // Issue 2: Non-manager employee has manager as subordinate
+        if (employee.hierarchicalLevel !== 'manager' && employee.responsibleManager) {
+          const manager = allEmployees.find(e => e.id === employee.responsibleManager);
+          if (manager && manager.hierarchicalLevel !== 'manager') {
+            issues.push({
+              employee,
+              issue: `Employee "${employee.firstName}" reports to "${manager.firstName}" who is not a manager`,
+              fix: 'Update manager level or reassign reporting',
+            });
+          }
+        }
+
+        // Issue 3: Manager with wrong hierarchical level but has subordinates
+        if (employee.hierarchicalLevel !== 'manager') {
+          const subordinates = allEmployees.filter(e => e.responsibleManager === employee.id);
+          if (subordinates.length > 0) {
+            issues.push({
+              employee,
+              issue: `Employee "${employee.firstName}" has ${subordinates.length} subordinates but is not marked as manager`,
+              fix: 'Update hierarchical level to manager',
+            });
+          }
+        }
+      } catch (error) {
+        errors.push(`Error checking employee ${employee.firstName}: ${error}`);
+      }
+    }
+
+    // Apply fixes for specific cases
+    for (const issue of issues) {
+      try {
+        if (issue.fix === 'Remove responsible manager') {
+          // Fix: Remove responsible manager from manager-level employees
+          await updateEmployee(issue.employee.id, {
+            professionalInfo: {
+              department: issue.employee.department,
+              position: issue.employee.position || '',
+              admissionDate: issue.employee.admissionDate?.toISOString().split('T')[0] || '',
+              hierarchicalLevel: issue.employee.hierarchicalLevel || 'junior',
+              responsibleManager: '', // Clear the responsible manager
+              baseSalary: issue.employee.baseSalary || 0,
+            },
+          });
+          fixedCount++;
+          console.log(`Fixed: Removed responsible manager from ${issue.employee.firstName}`);
+        }
+      } catch (error) {
+        errors.push(`Error fixing ${issue.employee.firstName}: ${error}`);
+      }
+    }
+
+    const report = {
+      totalChecked: allEmployees.length,
+      issuesFound: issues.length,
+      issuesFixed: fixedCount,
+      errors,
+    };
+
+    console.log('Manager relationship consistency check completed:', report);
+    
+    if (issues.length > fixedCount) {
+      console.warn('Some issues require manual intervention:');
+      issues.forEach(issue => {
+        if (issue.fix !== 'Remove responsible manager') {
+          console.warn(`- ${issue.issue}`);
+        }
+      });
+    }
+
+    return report;
+  } catch (error) {
+    console.error('Error during manager relationship fix:', error);
+    throw handleFirebaseError(error, 'correção de relacionamentos de gerência');
+  }
+};
+
+// Get data integrity report without making changes
+export const getDataIntegrityReport = async (): Promise<{
+  employees: Employee[];
+  issues: Array<{ employeeId: string; employeeName: string; issue: string; severity: 'high' | 'medium' | 'low' }>;
+  summary: { total: number; high: number; medium: number; low: number };
+}> => {
+  try {
+    const allEmployees = await getAllEmployees();
+    const issues: Array<{ employeeId: string; employeeName: string; issue: string; severity: 'high' | 'medium' | 'low' }> = [];
+
+    for (const employee of allEmployees) {
+      // High severity: Manager with responsible manager
+      if (employee.hierarchicalLevel === 'manager' && employee.responsibleManager) {
+        issues.push({
+          employeeId: employee.id,
+          employeeName: employee.firstName,
+          issue: 'Manager has a responsible manager assigned',
+          severity: 'high',
+        });
+      }
+
+      // High severity: Non-manager managing others
+      if (employee.hierarchicalLevel !== 'manager') {
+        const subordinates = allEmployees.filter(e => e.responsibleManager === employee.id);
+        if (subordinates.length > 0) {
+          issues.push({
+            employeeId: employee.id,
+            employeeName: employee.firstName,
+            issue: `Has ${subordinates.length} subordinates but is not marked as manager`,
+            severity: 'high',
+          });
+        }
+      }
+
+      // Medium severity: Reporting to non-manager
+      if (employee.hierarchicalLevel !== 'manager' && employee.responsibleManager) {
+        const manager = allEmployees.find(e => e.id === employee.responsibleManager);
+        if (manager && manager.hierarchicalLevel !== 'manager') {
+          issues.push({
+            employeeId: employee.id,
+            employeeName: employee.firstName,
+            issue: `Reports to ${manager.firstName} who is not a manager`,
+            severity: 'medium',
+          });
+        }
+      }
+    }
+
+    const summary = {
+      total: issues.length,
+      high: issues.filter(i => i.severity === 'high').length,
+      medium: issues.filter(i => i.severity === 'medium').length,
+      low: issues.filter(i => i.severity === 'low').length,
+    };
+
+    return { employees: allEmployees, issues, summary };
+  } catch (error) {
+    console.error('Error generating data integrity report:', error);
+    throw handleFirebaseError(error, 'geração de relatório de integridade');
+  }
+};
+
+// Utility to repair/sync department employee counts with actual employee data
+export const syncDepartmentEmployeeCounts = async (): Promise<void> => {
+  try {
+    console.log('Starting department-employee sync...');
+    
+    // Get all employees and departments
+    const [allEmployees, allDepartments] = await Promise.all([
+      getAllEmployees(),
+      // We'll need to import getDepartments from departments service
+      // For now, let's get departments directly
+      getDocs(query(collection(db, 'departments'), where('isActive', '==', true)))
+    ]);
+    
+    // Create a map of department ID to actual employee IDs
+    const departmentEmployeeMap: Record<string, string[]> = {};
+    
+    // Group employees by their department
+    allEmployees.forEach(employee => {
+      if (employee.department) {
+        if (!departmentEmployeeMap[employee.department]) {
+          departmentEmployeeMap[employee.department] = [];
+        }
+        departmentEmployeeMap[employee.department].push(employee.id);
+      }
+    });
+    
+    // Update each department's employeeIds array
+    const batch = writeBatch(db);
+    let updatedCount = 0;
+    
+    allDepartments.docs.forEach(departmentDoc => {
+      const departmentId = departmentDoc.id;
+      const currentData = departmentDoc.data();
+      const actualEmployeeIds = departmentEmployeeMap[departmentId] || [];
+      const currentEmployeeIds = currentData.employeeIds || [];
+      
+      // Check if update is needed
+      const needsUpdate = 
+        actualEmployeeIds.length !== currentEmployeeIds.length ||
+        !actualEmployeeIds.every((id: string) => currentEmployeeIds.includes(id)) ||
+        !currentEmployeeIds.every((id: string) => actualEmployeeIds.includes(id));
+      
+      if (needsUpdate) {
+        batch.update(departmentDoc.ref, {
+          employeeIds: actualEmployeeIds,
+          updatedAt: Timestamp.now(),
+        });
+        updatedCount++;
+        console.log(`Syncing department "${currentData.name}": ${currentEmployeeIds.length} → ${actualEmployeeIds.length} employees`);
+      }
+    });
+    
+    if (updatedCount > 0) {
+      await batch.commit();
+      console.log(`Successfully synced ${updatedCount} departments`);
+    } else {
+      console.log('All departments are already in sync');
+    }
+  } catch (error) {
+    console.error('Error syncing department employee counts:', error);
+    throw error;
   }
 };

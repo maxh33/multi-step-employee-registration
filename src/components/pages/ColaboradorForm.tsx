@@ -10,7 +10,9 @@ import {
   Link,
   LinearProgress,
   Alert,
+  Chip,
 } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import VerticalStepIndicator from '../ui/VerticalStepIndicator';
 import PersonalInfoStep from '../forms/PersonalInfoStep';
@@ -35,26 +37,59 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [searchParams] = useSearchParams();
+  
+  // Extract department context from URL parameters
+  const fromDepartment = searchParams.get('fromDepartment');
+  const departmentName = searchParams.get('departmentName');
+  const role = searchParams.get('role');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitProgress, setSubmitProgress] = React.useState(0);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Convert editingEmployee to form data format
+  // Convert editingEmployee to form data format OR create initial data for department manager
   const initialFormData = React.useMemo(() => {
-    if (!editingEmployee) return undefined;
-
-    return {
-      personalInfo: {
-        firstName: editingEmployee.firstName,
-        email: editingEmployee.email,
-        activateOnCreate: editingEmployee.status === 'Ativo',
-      },
-      professionalInfo: {
-        department: editingEmployee.department,
-      },
-    };
-  }, [editingEmployee]);
+    if (editingEmployee) {
+      // Editing existing employee
+      return {
+        personalInfo: {
+          firstName: editingEmployee.firstName,
+          email: editingEmployee.email,
+          activateOnCreate: editingEmployee.status === 'Ativo',
+        },
+        professionalInfo: {
+          department: editingEmployee.department,
+          position: editingEmployee.position || '',
+          admissionDate: editingEmployee.admissionDate ? editingEmployee.admissionDate.toISOString().split('T')[0] : '',
+          hierarchicalLevel: editingEmployee.hierarchicalLevel || 'junior',
+          responsibleManager: editingEmployee.responsibleManager || '',
+          baseSalary: editingEmployee.baseSalary || 0,
+        },
+      };
+    }
+    
+    // Creating new employee - check if creating manager for department
+    if (fromDepartment && role === 'manager') {
+      return {
+        personalInfo: {
+          firstName: '',
+          email: '',
+          activateOnCreate: true, // Default to active for new managers
+        },
+        professionalInfo: {
+          department: fromDepartment, // Pre-select the department
+          position: '',
+          admissionDate: '',
+          hierarchicalLevel: 'manager' as const, // Pre-select manager level
+          responsibleManager: '', // Managers don't have responsible managers
+          baseSalary: 0,
+        },
+      };
+    }
+    
+    return undefined; // Standard new employee creation
+  }, [editingEmployee, fromDepartment, role]);
 
   const {
     formData,
@@ -64,17 +99,30 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
     updatePersonalInfo,
     updateProfessionalInfo,
     validateCurrentStep,
+    validateHierarchicalLevel,
     nextStep,
     previousStep,
     clearFormData,
-  } = useFormData(initialFormData);
+  } = useFormData(initialFormData, editingEmployee?.id);
 
   const stepTitles = ['Infos Básicas', 'Informações Profissionais'];
   const totalSteps = 2;
 
   const handleNext = async () => {
     setSubmitError(null); // Clear any previous errors
-    if (validateCurrentStep()) {
+    
+    // Run all validation checks
+    let isValid = validateCurrentStep();
+    
+    // Additional validation for hierarchical level changes in edit mode (step 2)
+    if (isValid && currentStep === 2 && editingEmployee?.id) {
+      const hierarchicalLevelValid = await validateHierarchicalLevel();
+      if (!hierarchicalLevelValid) {
+        isValid = false;
+      }
+    }
+    
+    if (isValid) {
       if (currentStep < totalSteps) {
         nextStep();
       } else {
@@ -147,6 +195,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
       }
+      // Only cleanup progress interval - form cleanup is handled in handleBack for explicit cancellations
     };
   }, []);
 
@@ -154,6 +203,10 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
     if (currentStep > 1) {
       previousStep();
     } else {
+      // Clear form data when exiting form (especially important when canceling edit)
+      if (editingEmployee) {
+        clearFormData();
+      }
       onBack();
     }
   };
@@ -205,6 +258,21 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
             {editingEmployee ? 'Editar Colaborador' : 'Cadastrar Colaborador'}
           </Typography>
         </Breadcrumbs>
+
+        {/* Department Context Indicator */}
+        {fromDepartment && role === 'manager' && departmentName && (
+          <Box sx={{ mb: 2 }}>
+            <Chip
+              label={`Criando gerente para: ${departmentName}`}
+              color="primary"
+              variant="outlined"
+              sx={{
+                backgroundColor: theme.palette.primary.light + '20',
+                '& .MuiChip-label': { fontWeight: 500 },
+              }}
+            />
+          </Box>
+        )}
 
         {/* Progress Bar */}
         <Box
@@ -310,6 +378,11 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
                       data={formData.professionalInfo || {}}
                       errors={errors}
                       onChange={updateProfessionalInfo}
+                      isDepartmentLocked={!!(fromDepartment && role === 'manager')}
+                      isHierarchicalLevelLocked={!!(fromDepartment && role === 'manager')}
+                      onHierarchicalLevelChange={validateHierarchicalLevel}
+                      employeeId={editingEmployee?.id}
+                      currentHierarchicalLevel={editingEmployee?.hierarchicalLevel}
                     />
                   )}
                 </Box>
@@ -453,6 +526,11 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({
                         data={formData.professionalInfo || {}}
                         errors={errors}
                         onChange={updateProfessionalInfo}
+                        isDepartmentLocked={!!(fromDepartment && role === 'manager')}
+                        isHierarchicalLevelLocked={!!(fromDepartment && role === 'manager')}
+                        onHierarchicalLevelChange={validateHierarchicalLevel}
+                        employeeId={editingEmployee?.id}
+                        currentHierarchicalLevel={editingEmployee?.hierarchicalLevel}
                       />
                     )}
                   </Box>

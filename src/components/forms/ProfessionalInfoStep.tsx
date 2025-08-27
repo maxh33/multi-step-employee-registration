@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -7,33 +7,151 @@ import {
   FormControl,
   FormHelperText,
   useTheme,
+  CircularProgress,
+  Alert,
+  Button,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { SelectChangeEvent } from '@mui/material';
-import { ProfessionalInfo } from '../../types/employee';
+import { ProfessionalInfo, Employee } from '../../types/employee';
+import { Department } from '../../types/department';
+import { getAllDepartments } from '../../services/departments';
+import { getManagerEmployees, checkManagerHasSubordinates } from '../../services/firebase';
 
 interface ProfessionalInfoStepProps {
   data: Partial<ProfessionalInfo>;
   errors: Record<string, string>;
   onChange: (data: Partial<ProfessionalInfo>) => void;
+  isDepartmentLocked?: boolean;
+  isHierarchicalLevelLocked?: boolean;
+  onHierarchicalLevelChange?: () => Promise<boolean>;
+  employeeId?: string; // For checking if manager has subordinates
+  currentHierarchicalLevel?: string; // Current level for comparison
 }
 
-// Department options - these can be moved to a configuration file later
-const departmentOptions = [
-  { value: 'desenvolvimento', label: 'Desenvolvimento' },
-  { value: 'design', label: 'Design' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'vendas', label: 'Vendas' },
-  { value: 'rh', label: 'Recursos Humanos' },
-  { value: 'financeiro', label: 'Financeiro' },
-  { value: 'operacoes', label: 'Operações' },
-  { value: 'suporte', label: 'Suporte ao Cliente' },
-  { value: 'ti', label: 'TI' },
-  { value: 'produto', label: 'Produto' },
-];
-
-const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, errors, onChange }) => {
+const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ 
+  data, 
+  errors, 
+  onChange, 
+  isDepartmentLocked, 
+  isHierarchicalLevelLocked, 
+  onHierarchicalLevelChange, 
+  employeeId, 
+  currentHierarchicalLevel 
+}) => {
   const theme = useTheme();
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
+  
+  const [managers, setManagers] = useState<Employee[]>([]);
+  const [loadingManagers, setLoadingManagers] = useState(false);
+  const [hasSubordinates, setHasSubordinates] = useState(false);
+  const [checkingSubordinates, setCheckingSubordinates] = useState(false);
+  const [hierarchicalLevelLockedBySubordinates, setHierarchicalLevelLockedBySubordinates] = useState(false);
+  const [showLockDialog, setShowLockDialog] = useState(false);
+
+  const fetchDepartments = useCallback(async () => {
+    try {
+      setLoadingDepartments(true);
+      setDepartmentError(null);
+      const fetchedDepartments = await getAllDepartments();
+      setDepartments(fetchedDepartments);
+      
+      // Validate current department value against fetched departments
+      if (data.department && fetchedDepartments.length > 0) {
+        const validDepartment = fetchedDepartments.find(dept => 
+          dept.name === data.department || 
+          (data.department && dept.name.toLowerCase() === data.department.toLowerCase()) ||
+          dept.id === data.department
+        );
+        
+        // If current department value is invalid, reset to empty
+        if (!validDepartment) {
+          console.warn(`Invalid department value "${data.department}" found, resetting to empty`);
+          onChange({ ...data, department: '' });
+        }
+      }
+      
+      // If no departments exist, show error
+      if (fetchedDepartments.length === 0) {
+        setDepartmentError('Nenhum departamento cadastrado. Por favor, crie departamentos primeiro.');
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'Erro ao carregar departamentos';
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      if (errorMsg.includes('network') || errorMsg.includes('Failed to fetch')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+      } else if (errorMsg.includes('permission-denied')) {
+        errorMessage = 'Sem permissão para acessar departamentos.';
+      } else if (errorMsg.includes('index')) {
+        errorMessage = 'Configuração do banco de dados em andamento. Tente novamente em alguns instantes.';
+      }
+      
+      setDepartmentError(errorMessage);
+    } finally {
+      setLoadingDepartments(false);
+    }
+  }, [data, onChange]); // Include dependencies used in the function
+
+  const fetchManagers = useCallback(async () => {
+    try {
+      setLoadingManagers(true);
+      const managerEmployees = await getManagerEmployees(employeeId); // Exclude current employee
+      setManagers(managerEmployees);
+    } catch (error) {
+      console.error('Error fetching managers:', error);
+      setManagers([]);
+    } finally {
+      setLoadingManagers(false);
+    }
+  }, [employeeId]);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, [fetchDepartments, data.department]); // Re-validate when department value changes
+
+  useEffect(() => {
+    // Fetch managers when hierarchical level is set and is not manager
+    if (data.hierarchicalLevel && data.hierarchicalLevel !== 'manager') {
+      fetchManagers();
+    }
+  }, [data.hierarchicalLevel, fetchManagers]); // Use fetchManagers from useCallback
+
+  // Check if current manager has subordinates (for edit mode)
+  useEffect(() => {
+    const checkSubordinates = async () => {
+      if (employeeId && currentHierarchicalLevel === 'manager') {
+        try {
+          setCheckingSubordinates(true);
+          const subordinatesExist = await checkManagerHasSubordinates(employeeId);
+          setHasSubordinates(subordinatesExist);
+          setHierarchicalLevelLockedBySubordinates(subordinatesExist);
+        } catch (error) {
+          console.error('Error checking manager subordinates:', error);
+          setHasSubordinates(false);
+          setHierarchicalLevelLockedBySubordinates(false);
+        } finally {
+          setCheckingSubordinates(false);
+        }
+      } else {
+        setHasSubordinates(false);
+        setHierarchicalLevelLockedBySubordinates(false);
+      }
+    };
+
+    checkSubordinates();
+  }, [employeeId, currentHierarchicalLevel]);
 
   const handleFieldChange =
     (field: keyof ProfessionalInfo) => (event: SelectChangeEvent<string>) => {
@@ -44,101 +162,437 @@ const ProfessionalInfoStep: React.FC<ProfessionalInfoStepProps> = ({ data, error
       });
     };
 
+  const handleHierarchicalLevelChange = async (event: SelectChangeEvent<string>) => {
+    const newLevel = event.target.value as 'junior' | 'mid-level' | 'senior' | 'manager';
+    
+    // Update the value first
+    onChange({
+      ...data,
+      hierarchicalLevel: newLevel,
+      // Clear responsible manager if changing to manager level
+      responsibleManager: newLevel === 'manager' ? '' : data.responsibleManager,
+    });
+
+    // Run async validation if provided
+    if (onHierarchicalLevelChange) {
+      await onHierarchicalLevelChange();
+    }
+  };
+
+  const handleLockedHierarchicalLevelClick = () => {
+    if (hierarchicalLevelLockedBySubordinates) {
+      setShowLockDialog(true);
+    }
+  };
+
+  const handleCloseLockDialog = () => {
+    setShowLockDialog(false);
+  };
+
+  // Determine if hierarchical level should be locked
+  const isHierarchicalLevelActuallyLocked = 
+    isHierarchicalLevelLocked || 
+    hierarchicalLevelLockedBySubordinates ||
+    checkingSubordinates;
+
   const getFieldError = (field: string) => {
     return errors[`professionalInfo.${field}`] || '';
   };
 
+  const getDepartmentName = (departmentId: string): string => {
+    const department = departments.find(dept => dept.id === departmentId);
+    return department ? department.name : 'Departamento não encontrado';
+  };
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: theme.spacing(3),
-        width: '100%',
-      }}
-    >
-      {/* Department Dropdown */}
-      <Box>
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: 500,
-            marginBottom: theme.spacing(1),
-            color: theme.palette.text.primary,
-            fontSize: '14px',
-          }}
-        >
-          Departamento
-        </Typography>
-        <FormControl fullWidth error={!!getFieldError('department')}>
-          <Select
-            value={data.department || ''}
-            onChange={handleFieldChange('department')}
-            displayEmpty
-            IconComponent={ExpandMoreIcon}
+    <Box>
+      <Typography variant="h5" component="h2" fontWeight={600} gutterBottom>
+        Informações Profissionais
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Adicione informações profissionais do colaborador
+      </Typography>
+
+      {departmentError && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {departmentError}
+        </Alert>
+      )}
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* Department Select */}
+        <Box>
+          <Typography
+            variant="body2"
             sx={{
-              borderRadius: '8px',
-              backgroundColor: '#ffffff',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.grey[300],
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.grey[400],
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.primary.main,
-                borderWidth: '2px',
-              },
-              '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-                borderColor: theme.palette.error.main,
-              },
-              '& .MuiSelect-select': {
-                padding: theme.spacing(1.5, 1.5),
-                fontSize: '14px',
-                color: data.department ? theme.palette.text.primary : theme.palette.text.secondary,
-              },
-              '& .MuiSelect-icon': {
-                color: theme.palette.grey[600],
-              },
+              mb: 1,
+              fontWeight: 500,
+              color: theme.palette.text.primary,
+              fontSize: '14px',
             }}
           >
-            <MenuItem
-              value=""
-              disabled
+            Departamento *
+          </Typography>
+          <FormControl fullWidth error={!!getFieldError('department')}>
+            <Select
+              value={data.department || ''}
+              onChange={handleFieldChange('department')}
+              displayEmpty
+              disabled={loadingDepartments || departments.length === 0 || isDepartmentLocked}
+              IconComponent={ExpandMoreIcon}
               sx={{
-                color: theme.palette.text.secondary,
+                backgroundColor: '#fff',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('department') ? theme.palette.error.main : '#e0e0e0',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('department') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('department') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+              }}
+            >
+              {loadingDepartments ? (
+                <MenuItem disabled>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={20} />
+                    <Typography>Carregando departamentos...</Typography>
+                  </Box>
+                </MenuItem>
+              ) : departmentError ? (
+                <MenuItem disabled value="">
+                  <Box sx={{ color: 'error.main' }}>
+                    <Typography variant="body2">{departmentError}</Typography>
+                    <Button
+                      size="small"
+                      onClick={() => fetchDepartments()}
+                      sx={{ mt: 1, textTransform: 'none' }}
+                    >
+                      Tentar novamente
+                    </Button>
+                  </Box>
+                </MenuItem>
+              ) : departments.length === 0 ? (
+                <MenuItem disabled value="">
+                  <Box sx={{ textAlign: 'center', py: 1 }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Nenhum departamento disponível
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => window.open(`${window.location.origin}/departamentos`, '_blank', 'noopener,noreferrer')}
+                      sx={{ 
+                        textTransform: 'none',
+                        fontSize: '12px',
+                        px: 2
+                      }}
+                    >
+                      + Criar Departamento
+                    </Button>
+                  </Box>
+                </MenuItem>
+              ) : (
+                [
+                  <MenuItem key="placeholder" value="">
+                    <em>Selecione um departamento</em>
+                  </MenuItem>,
+                  ...departments.map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </MenuItem>
+                  ))
+                ]
+              )}
+            </Select>
+            {getFieldError('department') && (
+              <FormHelperText>{getFieldError('department')}</FormHelperText>
+            )}
+          </FormControl>
+        </Box>
+
+        {/* Position Field */}
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 1,
+              fontWeight: 500,
+              color: theme.palette.text.primary,
+              fontSize: '14px',
+            }}
+          >
+            Cargo *
+          </Typography>
+          <TextField
+            fullWidth
+            value={data.position || ''}
+            onChange={(e) => onChange({ ...data, position: e.target.value })}
+            placeholder="Ex: Desenvolvedor Frontend"
+            error={!!getFieldError('position')}
+            helperText={getFieldError('position')}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                '& fieldset': {
+                  borderColor: getFieldError('position') ? theme.palette.error.main : '#e0e0e0',
+                },
+                '&:hover fieldset': {
+                  borderColor: getFieldError('position') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: getFieldError('position') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+              },
+            }}
+          />
+        </Box>
+
+        {/* Admission Date Field */}
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 1,
+              fontWeight: 500,
+              color: theme.palette.text.primary,
+              fontSize: '14px',
+            }}
+          >
+            Data de Admissão
+          </Typography>
+          <TextField
+            fullWidth
+            type="date"
+            value={data.admissionDate || ''}
+            onChange={(e) => onChange({ ...data, admissionDate: e.target.value })}
+            error={!!getFieldError('admissionDate')}
+            helperText={getFieldError('admissionDate')}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                '& fieldset': {
+                  borderColor: getFieldError('admissionDate') ? theme.palette.error.main : '#e0e0e0',
+                },
+                '&:hover fieldset': {
+                  borderColor: getFieldError('admissionDate') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: getFieldError('admissionDate') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+              },
+            }}
+          />
+        </Box>
+
+        {/* Hierarchical Level Field */}
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 1,
+              fontWeight: 500,
+              color: theme.palette.text.primary,
+              fontSize: '14px',
+            }}
+          >
+            Nível Hierárquico *
+            {hierarchicalLevelLockedBySubordinates && (
+              <Typography
+                component="span"
+                variant="caption"
+                sx={{ 
+                  ml: 1, 
+                  color: 'warning.main',
+                  fontStyle: 'italic'
+                }}
+              >
+                (Bloqueado - possui subordinados)
+              </Typography>
+            )}
+          </Typography>
+          <FormControl fullWidth error={!!getFieldError('hierarchicalLevel')}>
+            <Select
+              value={data.hierarchicalLevel || ''}
+              onChange={handleHierarchicalLevelChange}
+              displayEmpty
+              disabled={isHierarchicalLevelActuallyLocked}
+              onClick={hierarchicalLevelLockedBySubordinates ? handleLockedHierarchicalLevelClick : undefined}
+              IconComponent={ExpandMoreIcon}
+              sx={{
+                backgroundColor: '#fff',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('hierarchicalLevel') ? theme.palette.error.main : '#e0e0e0',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('hierarchicalLevel') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: getFieldError('hierarchicalLevel') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+              }}
+            >
+              <MenuItem value="">
+                <em>Selecione o nível</em>
+              </MenuItem>
+              <MenuItem value="junior">Júnior</MenuItem>
+              <MenuItem value="mid-level">Pleno</MenuItem>
+              <MenuItem value="senior">Sênior</MenuItem>
+              <MenuItem value="manager">Gerente</MenuItem>
+            </Select>
+            {getFieldError('hierarchicalLevel') && (
+              <FormHelperText>{getFieldError('hierarchicalLevel')}</FormHelperText>
+            )}
+          </FormControl>
+        </Box>
+
+        {/* Responsible Manager Field - Only show if not manager level */}
+        {data.hierarchicalLevel && data.hierarchicalLevel !== 'manager' && (
+          <Box>
+            <Typography
+              variant="body2"
+              sx={{
+                mb: 1,
+                fontWeight: 500,
+                color: theme.palette.text.primary,
                 fontSize: '14px',
               }}
             >
-              Selecione um departamento
-            </MenuItem>
-            {departmentOptions.map((option) => (
-              <MenuItem
-                key={option.value}
-                value={option.value}
+              Responsável *
+            </Typography>
+            <FormControl fullWidth error={!!getFieldError('responsibleManager')}>
+              <Select
+                value={data.responsibleManager || ''}
+                onChange={(e) => onChange({ ...data, responsibleManager: e.target.value })}
+                displayEmpty
+                disabled={loadingManagers}
+                IconComponent={ExpandMoreIcon}
                 sx={{
-                  fontSize: '14px',
-                  color: theme.palette.text.primary,
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover,
+                  backgroundColor: '#fff',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: getFieldError('responsibleManager') ? theme.palette.error.main : '#e0e0e0',
                   },
-                  '&.Mui-selected': {
-                    backgroundColor: theme.palette.primary.light,
-                    '&:hover': {
-                      backgroundColor: theme.palette.primary.light,
-                    },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: getFieldError('responsibleManager') ? theme.palette.error.main : theme.palette.primary.main,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: getFieldError('responsibleManager') ? theme.palette.error.main : theme.palette.primary.main,
                   },
                 }}
               >
-                {option.label}
-              </MenuItem>
-            ))}
-          </Select>
-          {getFieldError('department') && (
-            <FormHelperText sx={{ marginLeft: 0 }}>{getFieldError('department')}</FormHelperText>
-          )}
-        </FormControl>
+                {loadingManagers ? (
+                  <MenuItem disabled>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CircularProgress size={20} />
+                      <Typography>Carregando gerentes...</Typography>
+                    </Box>
+                  </MenuItem>
+                ) : managers.length === 0 ? (
+                  <MenuItem disabled value="">
+                    <em>Nenhum gerente disponível</em>
+                  </MenuItem>
+                ) : (
+                  [
+                    <MenuItem key="placeholder" value="">
+                      <em>Selecione um responsável</em>
+                    </MenuItem>,
+                    ...managers.map((manager) => (
+                      <MenuItem key={manager.id} value={manager.id}>
+                        {manager.firstName} - {getDepartmentName(manager.department)}
+                      </MenuItem>
+                    ))
+                  ]
+                )}
+              </Select>
+              {getFieldError('responsibleManager') && (
+                <FormHelperText>{getFieldError('responsibleManager')}</FormHelperText>
+              )}
+            </FormControl>
+          </Box>
+        )}
+
+        {/* Base Salary Field */}
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 1,
+              fontWeight: 500,
+              color: theme.palette.text.primary,
+              fontSize: '14px',
+            }}
+          >
+            Salário Base *
+          </Typography>
+          <TextField
+            fullWidth
+            type="number"
+            value={data.baseSalary || ''}
+            onChange={(e) => onChange({ ...data, baseSalary: parseFloat(e.target.value) || 0 })}
+            placeholder="Ex: 5000.00"
+            error={!!getFieldError('baseSalary')}
+            helperText={getFieldError('baseSalary')}
+            InputProps={{
+              startAdornment: (
+                <Typography variant="body2" sx={{ mr: 1, color: 'text.secondary' }}>
+                  R$
+                </Typography>
+              ),
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#fff',
+                '& fieldset': {
+                  borderColor: getFieldError('baseSalary') ? theme.palette.error.main : '#e0e0e0',
+                },
+                '&:hover fieldset': {
+                  borderColor: getFieldError('baseSalary') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: getFieldError('baseSalary') ? theme.palette.error.main : theme.palette.primary.main,
+                },
+              },
+            }}
+          />
+        </Box>
       </Box>
+
+      {/* Lock Dialog */}
+      <Dialog
+        open={showLockDialog}
+        onClose={handleCloseLockDialog}
+        aria-labelledby="lock-dialog-title"
+        aria-describedby="lock-dialog-description"
+      >
+        <DialogTitle id="lock-dialog-title">
+          Nível Hierárquico Bloqueado
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="lock-dialog-description">
+            Este gerente possui subordinados ativos. Transfira os subordinados para outro gerente antes de alterar o nível hierárquico.
+          </DialogContentText>
+          {hasSubordinates && (
+            <DialogContentText sx={{ mt: 2, fontWeight: 500 }}>
+              Para alterar o nível hierárquico:
+            </DialogContentText>
+          )}
+          <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+            <li>Acesse a lista de colaboradores</li>
+            <li>Encontre os subordinados deste gerente</li>
+            <li>Atribua um novo gerente responsável a cada subordinado</li>
+            <li>Retorne a este formulário para alterar o nível hierárquico</li>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLockDialog} color="primary" autoFocus>
+            Entendi
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

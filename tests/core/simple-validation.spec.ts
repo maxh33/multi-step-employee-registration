@@ -1,10 +1,15 @@
 import { test, expect } from '@playwright/test';
 
+// Authentication is handled globally via playwright.config.ts and auth.setup.ts
+// Tests now use the saved authentication state automatically
+
 test.describe('Simple Form Validation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Simple wait for page load instead of Firebase detection
-    await page.waitForSelector('text=Colaboradores', { timeout: 10000 });
+    // Navigate to the main page - authentication is already handled
+    await page.goto('/colaboradores');
+    
+    // Verify we're on the main page
+    await expect(page.locator('h1:has-text("Colaboradores")')).toBeVisible();
   });
 
   test('should load the application correctly', async ({ page }) => {
@@ -67,9 +72,34 @@ test.describe('Simple Form Validation', () => {
     await page.click('text=Ativar ao criar');
     await page.click('button:has-text("Próximo")');
     
-    // Fill step 2
+    // Wait for step 2 to be visible
+    await expect(page.locator('h5:has-text("Informações Profissionais")')).toBeVisible();
+    
+    // Fill all required fields in step 2 (Phase 2 added new required fields)
+    
+    // Department
     await page.click('text=Selecione um departamento');
     await page.click('text=Desenvolvimento');
+    
+    // Position
+    await page.fill('input[placeholder*="Cargo"]', 'Developer');
+    
+    // Admission Date
+    await page.fill('input[placeholder*="Data"]', '01/01/2024');
+    
+    // Hierarchical Level
+    await page.click('text=Pleno');
+    
+    // Base Salary
+    await page.fill('input[placeholder*="Salário"]', '5000');
+    
+    // Responsible Manager (should appear for non-manager levels)
+    const managerDropdown = page.locator('text=Selecione o gerente responsável');
+    if (await managerDropdown.isVisible({ timeout: 1000 })) {
+      await managerDropdown.click();
+      // Select first available manager
+      await page.locator('[role="option"]').first().click();
+    }
     
     // Submit form
     await page.click('button:has-text("Concluir")');
