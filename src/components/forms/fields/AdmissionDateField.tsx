@@ -6,28 +6,18 @@ import {
   useTheme,
 } from '@mui/material';
 
-interface PositionFieldProps {
+interface AdmissionDateFieldProps {
   value: string;
   onChange: (value: string) => void;
   error?: string;
-  disabled?: boolean;
 }
 
-const PositionField: React.FC<PositionFieldProps> = React.memo(({
+const AdmissionDateField: React.FC<AdmissionDateFieldProps> = React.memo(({
   value,
   onChange,
   error,
-  disabled = false,
 }) => {
   const theme = useTheme();
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = event.target.value;
-    // Basic sanitization
-    if (newValue.length <= 100) {
-      onChange(newValue);
-    }
-  };
 
   return (
     <Box>
@@ -40,17 +30,18 @@ const PositionField: React.FC<PositionFieldProps> = React.memo(({
           fontSize: '14px',
         }}
       >
-        Cargo *
+        Data de Admissão
       </Typography>
       <TextField
         fullWidth
+        type="date"
         value={value || ''}
-        onChange={handleChange}
-        placeholder="Ex: Desenvolvedor Frontend"
+        onChange={(e) => onChange(e.target.value)}
         error={!!error}
         helperText={error}
-        disabled={disabled}
-        inputProps={{ maxLength: 100 }}
+        InputLabelProps={{
+          shrink: true,
+        }}
         sx={{
           '& .MuiOutlinedInput-root': {
             backgroundColor: '#fff',
@@ -70,7 +61,6 @@ const PositionField: React.FC<PositionFieldProps> = React.memo(({
   );
 });
 
-PositionField.displayName = 'PositionField';
+AdmissionDateField.displayName = 'AdmissionDateField';
 
-export { PositionField };
-export default PositionField;
+export { AdmissionDateField };

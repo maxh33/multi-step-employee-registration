@@ -6,27 +6,22 @@ import {
   useTheme,
 } from '@mui/material';
 
-interface PositionFieldProps {
-  value: string;
-  onChange: (value: string) => void;
+interface BaseSalaryFieldProps {
+  value: number;
+  onChange: (value: number) => void;
   error?: string;
-  disabled?: boolean;
 }
 
-const PositionField: React.FC<PositionFieldProps> = React.memo(({
+const BaseSalaryField: React.FC<BaseSalaryFieldProps> = React.memo(({
   value,
   onChange,
   error,
-  disabled = false,
 }) => {
   const theme = useTheme();
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = event.target.value;
-    // Basic sanitization
-    if (newValue.length <= 100) {
-      onChange(newValue);
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericValue = parseFloat(e.target.value) || 0;
+    onChange(numericValue);
   };
 
   return (
@@ -40,17 +35,23 @@ const PositionField: React.FC<PositionFieldProps> = React.memo(({
           fontSize: '14px',
         }}
       >
-        Cargo *
+        Salário Base *
       </Typography>
       <TextField
         fullWidth
+        type="number"
         value={value || ''}
         onChange={handleChange}
-        placeholder="Ex: Desenvolvedor Frontend"
+        placeholder="Ex: 5000.00"
         error={!!error}
         helperText={error}
-        disabled={disabled}
-        inputProps={{ maxLength: 100 }}
+        InputProps={{
+          startAdornment: (
+            <Typography variant="body2" sx={{ mr: 1, color: 'text.secondary' }}>
+              R$
+            </Typography>
+          ),
+        }}
         sx={{
           '& .MuiOutlinedInput-root': {
             backgroundColor: '#fff',
@@ -70,7 +71,6 @@ const PositionField: React.FC<PositionFieldProps> = React.memo(({
   );
 });
 
-PositionField.displayName = 'PositionField';
+BaseSalaryField.displayName = 'BaseSalaryField';
 
-export { PositionField };
-export default PositionField;
+export { BaseSalaryField };

@@ -1,85 +1,103 @@
 import React from 'react';
 import {
-  FormControl,
-  FormLabel,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
   Box,
   Typography,
+  Select,
+  MenuItem,
+  FormControl,
   FormHelperText,
+  useTheme,
 } from '@mui/material';
-import { HierarchicalLevel } from '../../../types/extendedEmployee';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { SelectChangeEvent } from '@mui/material';
+
+type HierarchicalLevel = 'junior' | 'mid-level' | 'senior' | 'manager';
 
 interface HierarchicalLevelFieldProps {
   value: HierarchicalLevel | '';
-  onChange: (value: HierarchicalLevel) => void;
+  onChange: (event: SelectChangeEvent<string>) => void;
   error?: string;
+  disabled?: boolean;
+  locked?: boolean;
+  lockReason?: string;
+  onLockedClick?: () => void;
 }
 
-const hierarchicalLevels: Array<{
-  value: HierarchicalLevel;
-  label: string;
-  description: string;
-}> = [
-  { 
-    value: 'junior', 
-    label: 'Júnior', 
-    description: 'Profissional iniciante (0-2 anos)' 
-  },
-  { 
-    value: 'mid-level', 
-    label: 'Pleno', 
-    description: 'Profissional intermediário (2-5 anos)' 
-  },
-  { 
-    value: 'senior', 
-    label: 'Sênior', 
-    description: 'Profissional experiente (5+ anos)' 
-  },
-  { 
-    value: 'manager', 
-    label: 'Gerente', 
-    description: 'Liderança e gestão de equipe' 
-  }
-];
-
-const HierarchicalLevelField: React.FC<HierarchicalLevelFieldProps> = ({
+const HierarchicalLevelField: React.FC<HierarchicalLevelFieldProps> = React.memo(({
   value,
   onChange,
   error,
+  disabled = false,
+  locked = false,
+  lockReason,
+  onLockedClick,
 }) => {
-  return (
-    <FormControl fullWidth error={!!error}>
-      <FormLabel component="legend">Nível Hierárquico *</FormLabel>
-      <RadioGroup
-        value={value}
-        onChange={(e) => onChange(e.target.value as HierarchicalLevel)}
-        row
-      >
-        {hierarchicalLevels.map((level) => (
-          <FormControlLabel
-            key={level.value}
-            value={level.value}
-            control={<Radio />}
-            label={
-              <Box>
-                <Typography variant="body2" fontWeight={500}>
-                  {level.label}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {level.description}
-                </Typography>
-              </Box>
-            }
-          />
-        ))}
-      </RadioGroup>
-      {error && (
-        <FormHelperText>{error}</FormHelperText>
-      )}
-    </FormControl>
-  );
-};
+  const theme = useTheme();
 
+  return (
+    <Box>
+      <Typography
+        variant="body2"
+        sx={{
+          mb: 1,
+          fontWeight: 500,
+          color: theme.palette.text.primary,
+          fontSize: '14px',
+        }}
+      >
+        Nível Hierárquico *
+        {locked && lockReason && (
+          <Typography
+            component="span"
+            variant="caption"
+            sx={{ 
+              ml: 1, 
+              color: 'warning.main',
+              fontStyle: 'italic'
+            }}
+          >
+            ({lockReason})
+          </Typography>
+        )}
+      </Typography>
+      <FormControl fullWidth error={!!error}>
+        <Select
+          value={value || ''}
+          onChange={onChange}
+          displayEmpty
+          disabled={disabled || locked}
+          onClick={locked ? onLockedClick : undefined}
+          IconComponent={ExpandMoreIcon}
+          sx={{
+            backgroundColor: '#fff',
+            '& .MuiOutlinedInput-notchedOutline': {
+              borderColor: error ? theme.palette.error.main : '#e0e0e0',
+            },
+            '&:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: error ? theme.palette.error.main : theme.palette.primary.main,
+            },
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: error ? theme.palette.error.main : theme.palette.primary.main,
+            },
+          }}
+        >
+          <MenuItem value="">
+            <em>Selecione o nível</em>
+          </MenuItem>
+          <MenuItem value="junior">Júnior</MenuItem>
+          <MenuItem value="mid-level">Pleno</MenuItem>
+          <MenuItem value="senior">Sênior</MenuItem>
+          <MenuItem value="manager">Gerente</MenuItem>
+        </Select>
+        {error && (
+          <FormHelperText>{error}</FormHelperText>
+        )}
+      </FormControl>
+    </Box>
+  );
+});
+
+HierarchicalLevelField.displayName = 'HierarchicalLevelField';
+
+export { HierarchicalLevelField };
 export default HierarchicalLevelField;
