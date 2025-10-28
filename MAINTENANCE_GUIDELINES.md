@@ -156,6 +156,18 @@ const DEVELOPMENT_TIME_ALLOCATION = {
 - [ ] **Standards**: Follows established patterns and conventions
 - [ ] **Size**: Components under 300 lines or refactoring plan provided
 
+#### Refactoring Review Guidelines
+When reviewing large component refactoring (based on ColaboradoresHome success):
+
+- [ ] **Business Logic Extraction**: Complex logic moved to custom hooks
+- [ ] **Component Decomposition**: UI separated into focused sub-components
+- [ ] **Performance Optimization**: React.memo, useMemo, useCallback applied appropriately
+- [ ] **Type Safety**: Strong TypeScript interfaces maintained
+- [ ] **API Compatibility**: Existing component interface preserved
+- [ ] **Test Coverage**: Each hook and component testable in isolation
+- [ ] **Documentation**: Architectural decisions documented
+- [ ] **Pattern Consistency**: Follows established refactoring patterns
+
 #### Review Process
 1. **Author Self-Review**: Complete checklist before requesting review
 2. **Peer Review**: At least one team member review required
