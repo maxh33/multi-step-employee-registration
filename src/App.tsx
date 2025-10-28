@@ -8,6 +8,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoginForm from './components/auth/LoginForm';
 import UnauthorizedPage from './components/auth/UnauthorizedPage';
 import DashboardApp from './DashboardApp';
+import FirebaseConfigDebug from './components/debug/FirebaseConfigDebug';
 
 function App() {
   return (
@@ -19,6 +20,9 @@ function App() {
             {/* Public routes */}
             <Route path="/login" element={<LoginForm />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+            {/* Debug route - TEMPORARY: Remove before production deployment */}
+            <Route path="/debug" element={<FirebaseConfigDebug />} />
 
             {/* Protected routes */}
             <Route
