@@ -47,6 +47,9 @@
     "test:e2e:staging": "PLAYWRIGHT_BASE_URL=https://your-staging-url.vercel.app playwright test",
     "serve": "npx serve -s build -l 3000"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "browserslist": {
     "production": [
       ">0.2%",
