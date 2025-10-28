@@ -94,7 +94,6 @@ export const ColaboradoresHome: React.FC<ColaboradoresHomeProps> = memo(({
     clearSelection,
     handleBulkDelete,
     handleConfirmDelete,
-    handleCancelDelete,
     getSelectedCount,
     selectEmployee,
   } = useEmployeeSelection({
