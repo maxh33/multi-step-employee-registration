@@ -43,6 +43,7 @@ A comprehensive, enterprise-ready employee and department management system buil
 - **Testing**: Playwright E2E testing, Jest unit tests
 - **Deployment**: Vercel with automated CI/CD
 - **Development**: ESLint, Prettier, TypeScript strict mode
+- **Security**: [PhantomRaven](https://github.com/maxh33/phantom-raven-npm-vulnerability-scanner) npm supply-chain scanning (hidden-URL deps, typosquatting, malicious install scripts) on every push/PR touching `package.json`; AI-assisted PR review via Claude Code
 
 ## 📋 Employee Data Model
 
@@ -139,7 +140,7 @@ The project includes comprehensive testing infrastructure:
 
 - **Unit Tests**: Component and utility function testing
 - **E2E Tests**: Full application workflow testing with Playwright
-- **CI/CD**: Automated testing on all pull requests
+- **CI/CD**: Automated testing, npm supply-chain security scanning (PhantomRaven), and AI-assisted code review on all pull requests
 
 Run E2E tests locally:
 ```bash
@@ -173,6 +174,13 @@ The application is configured for Vercel deployment:
 - **[PROJECT_GUIDELINES.md](./PROJECT_GUIDELINES.md)** - Comprehensive development guidelines
 - **[PHASE_2_REQUIREMENTS.md](./PHASE_2_REQUIREMENTS.md)** - Detailed feature requirements
 - **[PHASE_2_DEVELOPMENT_CHECKLIST.md](./PHASE_2_DEVELOPMENT_CHECKLIST.md)** - Implementation checklist
+
+## 🆕 Recent Updates (August 2026)
+
+### CI/CD Security Hardening
+- ✅ **npm Supply-Chain Scanning**: [PhantomRaven](https://github.com/maxh33/phantom-raven-npm-vulnerability-scanner) runs on every push/PR touching `package.json` or `package-lock.json`, catching hidden-URL dependencies, typosquatting, and malicious install scripts
+- ✅ **AI-Assisted Code Review**: Claude Code reviews every PR for bugs and security issues automatically
+- ✅ **CI Timeout Hygiene**: Job-level `timeout-minutes` set on the review workflow (previously unset, defaulting to GitHub's 360-minute billed runner cap)
 
 ## 🆕 Recent Updates (August 2025)
 
